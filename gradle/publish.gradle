@@ -6,13 +6,13 @@ afterEvaluate {
             release(MavenPublication) {
                 from components.release
 
-                groupId = 'com.github.answufeng.aw-db'
-                artifactId = project.name
+                groupId = 'com.github.answufeng'
+                artifactId = 'aw-db'
                 version = project.findProperty('VERSION_NAME') ?: '1.0.0'
 
                 pom {
-                    name = project.name
-                    description = "aw-db - Room database utility library"
+                    name = 'aw-db'
+                    description = 'aw-db - Room database utility library for Android'
                     url = 'https://github.com/answufeng/aw-db'
 
                     licenses {

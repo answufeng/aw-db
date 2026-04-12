@@ -5,11 +5,7 @@ import androidx.room.PrimaryKey
 
 @Entity
 data class User(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val age: Int
-) {
-    @PrimaryKey(autoGenerate = true)
-    var id: Long = 0
-
-    override fun toString(): String = "User(id=$id, name=$name, age=$age)"
-}
+)

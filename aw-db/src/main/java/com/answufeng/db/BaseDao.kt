@@ -22,6 +22,8 @@ import androidx.room.*
  * }
  * ```
  *
+ * 所有方法均为 suspend，应在协程中调用，推荐使用 [Dispatchers.IO][kotlinx.coroutines.Dispatchers.IO]。
+ *
  * @param T 实体类型，必须标注 [@Entity][Entity]
  */
 abstract class BaseDao<T> {
@@ -93,33 +95,24 @@ abstract class BaseDao<T> {
 
     /**
      * 插入或更新（upsert 语义）。
-     * 先尝试插入，冲突时执行更新。
+     *
+     * 使用 Room 原生 [@Upsert][Upsert] 注解，由 Room 在数据库层面保证原子性：
+     * 主键不存在时执行 INSERT，主键已存在时执行 UPDATE。
      *
      * @param entity 要插入或更新的实体
+     * @return 插入的行 ID；如果是更新，返回 -1
      */
-    @Transaction
-    open suspend fun upsert(entity: T) {
-        val id = insertOrIgnore(entity)
-        if (id == -1L) {
-            update(entity)
-        }
-    }
+    @Upsert
+    abstract suspend fun upsert(entity: T): Long
 
     /**
      * 批量插入或更新。
-     * 先尝试批量插入（忽略冲突），再逐个更新插入失败的记录。
+     *
+     * 使用 Room 原生 [@Upsert][Upsert] 注解，由 Room 在数据库层面保证原子性。
      *
      * @param entities 要插入或更新的实体列表
+     * @return 插入的行 ID 列表；更新的条目返回 -1
      */
-    @Transaction
-    open suspend fun upsertAll(entities: List<T>) {
-        val ids = insertAllOrIgnore(entities)
-        val needUpdate = entities.filterIndexed { index, _ -> ids[index] == -1L }
-        if (needUpdate.isNotEmpty()) {
-            updateAll(needUpdate)
-        }
-    }
-
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    protected abstract suspend fun insertAllOrIgnore(entities: List<T>): List<Long>
+    @Upsert
+    abstract suspend fun upsertAll(entities: List<T>): List<Long>
 }

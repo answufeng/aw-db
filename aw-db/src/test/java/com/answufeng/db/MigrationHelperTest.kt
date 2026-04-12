@@ -3,9 +3,6 @@ package com.answufeng.db
 import org.junit.Assert.*
 import org.junit.Test
 
-/**
- * MigrationHelper 的输入校验测试。
- */
 class MigrationHelperTest {
 
     @Test
@@ -40,5 +37,17 @@ class MigrationHelperTest {
     @Test(expected = IllegalArgumentException::class)
     fun `migration rejects endVersion less than startVersion`() {
         migration(2, 1) {}
+    }
+
+    @Test
+    fun `onCreateCallback creates valid Callback`() {
+        val callback = onCreateCallback {}
+        assertNotNull(callback)
+    }
+
+    @Test
+    fun `onOpenCallback creates valid Callback`() {
+        val callback = onOpenCallback {}
+        assertNotNull(callback)
     }
 }

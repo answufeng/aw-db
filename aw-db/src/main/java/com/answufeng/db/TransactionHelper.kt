@@ -26,6 +26,15 @@ import androidx.room.withTransaction
  * result.onSuccess { println("事务成功") }
  *       .onFailure { println("事务失败: ${it.message}") }
  * ```
+ *
+ * #### 批量执行
+ * ```kotlin
+ * val result = database.batchExecute(users) { user ->
+ *     userDao.insert(user)
+ * }
+ * result.onSuccess { count -> println("成功 $count 条") }
+ *       .onFailure { println("全部回滚: ${it.message}") }
+ * ```
  */
 
 /**
@@ -67,10 +76,33 @@ suspend fun <T : RoomDatabase, R> T.safeTransaction(block: suspend T.() -> R): R
 }
 
 /**
- * 批量执行操作并返回成功条数。
+ * 批量失败策略。
+ */
+enum class BatchFailureStrategy {
+    /**
+     * 跳过失败项，继续处理后续项。
+     * 事务整体不会回滚，返回成功处理的条数。
+     */
+    SKIP,
+
+    /**
+     * 任何一项失败则回滚整个事务。
+     * 事务失败时返回 [Result.failure]。
+     */
+    FAIL_FAST
+}
+
+/**
+ * 批量执行操作，支持失败策略。
  *
  * ```kotlin
- * val successCount = database.batchInsert(users) { user ->
+ * // 跳过失败项
+ * val count = database.batchExecute(users) { user ->
+ *     userDao.insert(user)
+ * }
+ *
+ * // 任一失败则全部回滚
+ * val result = database.batchExecute(users, BatchFailureStrategy.FAIL_FAST) { user ->
  *     userDao.insert(user)
  * }
  * ```
@@ -78,23 +110,42 @@ suspend fun <T : RoomDatabase, R> T.safeTransaction(block: suspend T.() -> R): R
  * @param T 数据库类型
  * @param E 数据元素类型
  * @param items 要处理的数据列表
+ * @param strategy 失败策略，默认 [BatchFailureStrategy.SKIP]
  * @param action 对每个元素执行的操作
- * @return 成功处理的条数
+ * @return SKIP 策略下返回成功处理的条数；FAIL_FAST 策略下返回 [Result]
  */
-suspend fun <T : RoomDatabase, E> T.batchInsert(
+suspend fun <T : RoomDatabase, E> T.batchExecute(
     items: List<E>,
+    strategy: BatchFailureStrategy = BatchFailureStrategy.SKIP,
     action: suspend (E) -> Unit
-): Int {
-    var count = 0
-    withTransaction {
-        for (item in items) {
+): Any {
+    return when (strategy) {
+        BatchFailureStrategy.SKIP -> {
+            var count = 0
+            withTransaction {
+                for (item in items) {
+                    try {
+                        action(item)
+                        count++
+                    } catch (_: Exception) {
+                        // skip failed item
+                    }
+                }
+            }
+            count
+        }
+
+        BatchFailureStrategy.FAIL_FAST -> {
             try {
-                action(item)
-                count++
+                withTransaction {
+                    for (item in items) {
+                        action(item)
+                    }
+                    items.size
+                }
             } catch (e: Exception) {
-                android.util.Log.w("aw-db", "batchInsert: skipped item due to ${e.message}")
+                Result.failure<Int>(e)
             }
         }
     }
-    return count
 }

@@ -38,15 +38,16 @@ android {
 }
 
 dependencies {
-    implementation(libs.core.ktx)
-    implementation(libs.annotation)
     api(libs.room.runtime)
     api(libs.room.ktx)
+    implementation(libs.core.ktx)
+    implementation(libs.annotation)
     implementation(libs.coroutines.core)
     implementation(libs.coroutines.android)
     implementation(libs.lifecycle.livedata.ktx)
 
     testImplementation(libs.junit)
+    testImplementation(libs.coroutines.test)
     testImplementation("org.json:json:20231013")
 }
 

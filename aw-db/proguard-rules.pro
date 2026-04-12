@@ -1,2 +1,2 @@
-# brick-data ProGuard rules (release build)
+# aw-db ProGuard rules (release build)
 # Consumer-facing rules are in consumer-rules.pro

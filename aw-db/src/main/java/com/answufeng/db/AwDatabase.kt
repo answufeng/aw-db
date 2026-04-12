@@ -10,12 +10,12 @@ import androidx.room.migration.Migration
  *
  * ### 基本用法
  * ```kotlin
- * val db = BrickDatabase.build<AppDatabase>(context, "app.db")
+ * val db = AwDatabase.build<AppDatabase>(context, "app.db")
  * ```
  *
  * ### 带迁移策略
  * ```kotlin
- * val db = BrickDatabase.build<AppDatabase>(context, "app.db") {
+ * val db = AwDatabase.build<AppDatabase>(context, "app.db") {
  *     addMigrations(MIGRATION_1_2, MIGRATION_2_3)
  *     fallbackToDestructiveMigration()
  * }
@@ -23,10 +23,17 @@ import androidx.room.migration.Migration
  *
  * ### 内存数据库（适合测试）
  * ```kotlin
- * val db = BrickDatabase.buildInMemory<AppDatabase>(context)
+ * val db = AwDatabase.buildInMemory<AppDatabase>(context)
+ * ```
+ *
+ * ### 预打包数据库
+ * ```kotlin
+ * val db = AwDatabase.build<AppDatabase>(context, "app.db") {
+ *     createFromAsset("databases/prepopulated.db")
+ * }
  * ```
  */
-object BrickDatabase {
+object AwDatabase {
 
     /**
      * 构建 Room 数据库。
@@ -79,7 +86,17 @@ object BrickDatabase {
 }
 
 /**
- * 数据库配置类。
+ * 数据库配置类，提供 DSL 方式配置 Room 数据库构建器。
+ *
+ * ```kotlin
+ * val db = AwDatabase.build<AppDatabase>(context, "app.db") {
+ *     addMigrations(MIGRATION_1_2)
+ *     addCallback(onCreateCallback { /* 预填充数据 */ })
+ *     fallbackToDestructiveMigration()
+ *     setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+ *     createFromAsset("databases/prepopulated.db")
+ * }
+ * ```
  */
 class DatabaseConfig {
 
@@ -89,6 +106,8 @@ class DatabaseConfig {
     private var destructiveMigrationFrom: IntArray? = null
     private var allowMainThread = false
     private var journalMode: RoomDatabase.JournalMode? = null
+    private var assetFilePath: String? = null
+    private var databaseFile: java.io.File? = null
 
     /**
      * 添加数据库版本迁移。
@@ -101,6 +120,13 @@ class DatabaseConfig {
         migrations.addAll(migration)
     }
 
+    /**
+     * 添加数据库回调。
+     *
+     * ```kotlin
+     * addCallback(onCreateCallback { execSQL("INSERT INTO config (key, value) VALUES ('version', '1.0')") })
+     * ```
+     */
     fun addCallback(callback: RoomDatabase.Callback) {
         callbacks.add(callback)
     }
@@ -124,7 +150,9 @@ class DatabaseConfig {
     }
 
     /**
-     * 允许在主线程执行数据库操作（仅建议在测试中使用）。
+     * 允许在主线程执行数据库操作。
+     *
+     * **警告**：此选项仅用于测试！生产环境使用会导致 ANR。
      */
     fun allowMainThreadQueries() {
         allowMainThread = true
@@ -139,14 +167,32 @@ class DatabaseConfig {
         journalMode = mode
     }
 
+    /**
+     * 从 assets 目录中的预打包数据库文件创建。
+     *
+     * 适用于首次安装时需要预填充数据的场景。
+     *
+     * @param assetFilePath assets 目录下的相对路径，如 "databases/prepopulated.db"
+     */
+    fun createFromAsset(assetFilePath: String) {
+        this.assetFilePath = assetFilePath
+    }
+
+    /**
+     * 从文件系统中的预打包数据库文件创建。
+     *
+     * @param databaseFile 预打包数据库文件
+     */
+    fun createFromFile(databaseFile: java.io.File) {
+        this.databaseFile = databaseFile
+    }
+
     @PublishedApi
     internal fun <T : RoomDatabase> apply(builder: RoomDatabase.Builder<T>) {
         if (migrations.isNotEmpty()) {
             builder.addMigrations(*migrations.toTypedArray())
         }
-        if (callbacks.isNotEmpty()) {
-            callbacks.forEach { builder.addCallback(it) }
-        }
+        callbacks.forEach { builder.addCallback(it) }
         if (destructiveMigration) {
             builder.fallbackToDestructiveMigration()
         }
@@ -158,6 +204,12 @@ class DatabaseConfig {
         }
         journalMode?.let {
             builder.setJournalMode(it)
+        }
+        assetFilePath?.let {
+            builder.createFromAsset(it)
+        }
+        databaseFile?.let {
+            builder.createFromFile(it)
         }
     }
 }

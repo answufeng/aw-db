@@ -1,11 +1,9 @@
 package com.answufeng.db
 
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
 
-/**
- * DbResult 密封类的状态判断、操作符和链式调用测试。
- */
 class DbResultTest {
 
     // ==================== 状态属性 ====================
@@ -48,7 +46,8 @@ class DbResultTest {
 
     @Test
     fun `getOrNull returns null on Failure`() {
-        assertNull(DbResult.Failure(RuntimeException()).getOrNull())
+        val result: DbResult<String> = DbResult.Failure(RuntimeException())
+        assertNull(result.getOrNull())
     }
 
     // ==================== getOrDefault ====================
@@ -70,6 +69,43 @@ class DbResultTest {
         assertEquals("default", failure.getOrDefault("default"))
     }
 
+    // ==================== getOrThrow ====================
+
+    @Test
+    fun `getOrThrow returns data on Success`() {
+        assertEquals("hello", DbResult.Success("hello").getOrThrow())
+    }
+
+    @Test
+    fun `getOrThrow returns null on Loading`() {
+        assertNull(DbResult.Loading.getOrThrow())
+    }
+
+    @Test(expected = RuntimeException::class)
+    fun `getOrThrow throws on Failure`() {
+        val result: DbResult<String> = DbResult.Failure(RuntimeException("err"))
+        result.getOrThrow()
+    }
+
+    // ==================== getOrElse ====================
+
+    @Test
+    fun `getOrElse returns data on Success`() {
+        assertEquals("data", DbResult.Success("data").getOrElse("fallback"))
+    }
+
+    @Test
+    fun `getOrElse returns fallback on Failure`() {
+        val result: DbResult<String> = DbResult.Failure(RuntimeException())
+        assertEquals("fallback", result.getOrElse("fallback"))
+    }
+
+    @Test
+    fun `getOrElse returns fallback on Loading`() {
+        val result: DbResult<String> = DbResult.Loading
+        assertEquals("fallback", result.getOrElse("fallback"))
+    }
+
     // ==================== map ====================
 
     @Test
@@ -80,16 +116,59 @@ class DbResultTest {
 
     @Test
     fun `map preserves Loading`() {
-        val result = DbResult.Loading.map { "ignored" }
-        assertTrue(result.isLoading)
+        val result: DbResult<String> = DbResult.Loading
+        val mapped = result.map { "ignored" }
+        assertTrue(mapped.isLoading)
     }
 
     @Test
     fun `map preserves Failure`() {
         val ex = RuntimeException("err")
-        val result = DbResult.Failure(ex).map { "ignored" }
-        assertTrue(result.isFailure)
-        assertSame(ex, (result as DbResult.Failure).error)
+        val result: DbResult<String> = DbResult.Failure(ex)
+        val mapped = result.map { "ignored" }
+        assertTrue(mapped.isFailure)
+        assertSame(ex, (mapped as DbResult.Failure).error)
+    }
+
+    // ==================== recover ====================
+
+    @Test
+    fun `recover returns Success with recovered data on Failure`() {
+        val failure: DbResult<String> = DbResult.Failure(RuntimeException("err"))
+        val recovered = failure.recover { "fallback" }
+        assertTrue(recovered.isSuccess)
+        assertEquals("fallback", (recovered as DbResult.Success).data)
+    }
+
+    @Test
+    fun `recover preserves Success`() {
+        val success = DbResult.Success("data")
+        val recovered = success.recover { "fallback" }
+        assertSame(success, recovered)
+    }
+
+    @Test
+    fun `recover preserves Loading`() {
+        val loading: DbResult<String> = DbResult.Loading
+        val recovered = loading.recover { "fallback" }
+        assertSame(loading, recovered)
+    }
+
+    // ==================== recoverWith ====================
+
+    @Test
+    fun `recoverWith returns alternative DbResult on Failure`() {
+        val failure: DbResult<String> = DbResult.Failure(RuntimeException("err"))
+        val recovered = failure.recoverWith { DbResult.Success("fallback") }
+        assertTrue(recovered.isSuccess)
+        assertEquals("fallback", (recovered as DbResult.Success).data)
+    }
+
+    @Test
+    fun `recoverWith can return Failure on Failure`() {
+        val failure: DbResult<String> = DbResult.Failure(RuntimeException("original"))
+        val recovered = failure.recoverWith { DbResult.Failure(RuntimeException("recovered")) }
+        assertTrue(recovered.isFailure)
     }
 
     // ==================== 链式回调 ====================
@@ -104,7 +183,8 @@ class DbResultTest {
     @Test
     fun `onSuccess does not fire for Failure`() {
         var called = false
-        DbResult.Failure(RuntimeException()).onSuccess { called = true }
+        val result: DbResult<String> = DbResult.Failure(RuntimeException())
+        result.onSuccess { called = true }
         assertFalse(called)
     }
 
@@ -112,7 +192,8 @@ class DbResultTest {
     fun `onFailure fires for Failure`() {
         var captured: Throwable? = null
         val ex = RuntimeException("err")
-        DbResult.Failure(ex).onFailure { captured = it }
+        val result: DbResult<String> = DbResult.Failure(ex)
+        result.onFailure { captured = it }
         assertSame(ex, captured)
     }
 
@@ -144,5 +225,56 @@ class DbResultTest {
         assertFalse(loadingCalled)
         assertTrue(successCalled)
         assertFalse(failureCalled)
+    }
+
+    // ==================== fold ====================
+
+    @Test
+    fun `fold on Loading`() {
+        val result: DbResult<String> = DbResult.Loading
+        val output = result.fold(
+            onLoading = { "loading" },
+            onSuccess = { it },
+            onFailure = { it.message ?: "error" }
+        )
+        assertEquals("loading", output)
+    }
+
+    @Test
+    fun `fold on Success`() {
+        val result: DbResult<String> = DbResult.Success("data")
+        val output = result.fold(
+            onLoading = { "loading" },
+            onSuccess = { it },
+            onFailure = { it.message ?: "error" }
+        )
+        assertEquals("data", output)
+    }
+
+    @Test
+    fun `fold on Failure`() {
+        val result: DbResult<String> = DbResult.Failure(RuntimeException("oops"))
+        val output = result.fold(
+            onLoading = { "loading" },
+            onSuccess = { it },
+            onFailure = { it.message ?: "error" }
+        )
+        assertEquals("oops", output)
+    }
+
+    // ==================== dbResultOf ====================
+
+    @Test
+    fun `dbResultOf returns Success on success`() = runBlocking {
+        val result = dbResultOf { "hello" }
+        assertTrue(result.isSuccess)
+        assertEquals("hello", (result as DbResult.Success).data)
+    }
+
+    @Test
+    fun `dbResultOf returns Failure on exception`() = runBlocking {
+        val result = dbResultOf<String> { throw RuntimeException("oops") }
+        assertTrue(result.isFailure)
+        assertEquals("oops", (result as DbResult.Failure).error.message)
     }
 }

@@ -5,6 +5,7 @@ import androidx.lifecycle.asLiveData
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 
 /**
  * 数据库操作结果包装，统一处理查询的加载/成功/失败状态。
@@ -64,6 +65,17 @@ sealed class DbResult<out T> {
     }
 
     /**
+     * 获取数据，失败时抛出异常，加载中返回 null。
+     *
+     * @throws Throwable 当状态为 [Failure] 时抛出内部异常
+     */
+    fun getOrThrow(): T? = when (this) {
+        is Success -> data
+        is Failure -> throw error
+        is Loading -> null
+    }
+
+    /**
      * 成功时执行回调。
      *
      * @param action 成功回调
@@ -104,6 +116,17 @@ sealed class DbResult<out T> {
         is Loading -> Loading
     }
 
+    /**
+     * 对三种状态分别处理，返回统一类型的结果。
+     *
+     * ```kotlin
+     * val text = result.fold(
+     *     onLoading = { "Loading..." },
+     *     onSuccess = { "${it.size} items" },
+     *     onFailure = { "Error: ${it.message}" }
+     * )
+     * ```
+     */
     inline fun <R> fold(
         onLoading: () -> R,
         onSuccess: (T) -> R,
@@ -113,10 +136,42 @@ sealed class DbResult<out T> {
         is Success -> onSuccess(data)
         is Failure -> onFailure(error)
     }
+
+    /**
+     * 恢复失败状态为默认数据。
+     *
+     * @param default 失败时返回的默认值
+     */
+    fun getOrElse(default: @UnsafeVariance T): T = when (this) {
+        is Success -> data
+        else -> default
+    }
+
+    /**
+     * 当失败时，使用恢复函数提供替代数据。
+     *
+     * @param recover 恢复函数
+     */
+    fun recover(recover: (Throwable) -> @UnsafeVariance T): DbResult<T> = when (this) {
+        is Failure -> Success(recover(error))
+        else -> this
+    }
+
+    /**
+     * 当失败时，使用恢复函数提供替代的 [DbResult]。
+     *
+     * @param recover 恢复函数
+     */
+    fun recoverWith(recover: (Throwable) -> DbResult<@UnsafeVariance T>): DbResult<T> = when (this) {
+        is Failure -> recover(error)
+        else -> this
+    }
 }
 
 /**
- * 将 Flow<T> 转换为 Flow<DbResult<T>>，自动处理异常。
+ * 将 Flow<T> 转换为 Flow<DbResult<T>>，自动处理异常，不包含 Loading 状态。
+ *
+ * 适用于不需要 Loading 状态的简单场景。
  *
  * ```kotlin
  * userDao.observeAll()
@@ -131,11 +186,34 @@ fun <T> Flow<T>.asDbResult(): Flow<DbResult<T>> {
 }
 
 /**
+ * 将 Flow<T> 转换为 Flow<DbResult<T>>，包含 Loading 状态。
+ *
+ * 在 Flow 开始发射数据前先发射 [DbResult.Loading]，
+ * 适用于需要在 UI 层展示加载状态的场景。
+ *
+ * ```kotlin
+ * userDao.observeAll()
+ *     .asDbResultWithLoading()
+ *     .collect { result ->
+ *         result.onLoading { showLoading() }
+ *               .onSuccess { showData(it) }
+ *               .onFailure { showError(it) }
+ *     }
+ * ```
+ */
+fun <T> Flow<T>.asDbResultWithLoading(): Flow<DbResult<T>> {
+    return this
+        .map<T, DbResult<T>> { DbResult.Success(it) }
+        .onStart { emit(DbResult.Loading) }
+        .catch { emit(DbResult.Failure(it)) }
+}
+
+/**
  * 将 Flow<DbResult<T>> 转换为 LiveData<DbResult<T>>。
  *
  * ```kotlin
  * val usersLiveData: LiveData<DbResult<List<User>>> =
- *     userDao.observeAll().asDbResult().asDbResultLiveData()
+ *     userDao.observeAll().asDbResultWithLoading().asDbResultLiveData()
  * ```
  */
 fun <T> Flow<DbResult<T>>.asDbResultLiveData(): LiveData<DbResult<T>> {

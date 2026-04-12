@@ -26,7 +26,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  *
  * #### 注册到数据库
  * ```kotlin
- * val db = BrickDatabase.build<AppDatabase>(context, "app.db") {
+ * val db = AwDatabase.build<AppDatabase>(context, "app.db") {
  *     addMigrations(MIGRATION_1_2, MIGRATION_2_3)
  * }
  * ```

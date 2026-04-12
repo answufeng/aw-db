@@ -1,6 +1,7 @@
 package com.answufeng.db
 
 import androidx.room.TypeConverter
+import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Date
 
@@ -11,17 +12,18 @@ import java.util.Date
  *
  * ```kotlin
  * @Database(entities = [...], version = 1)
- * @TypeConverters(BrickConverters::class)
+ * @TypeConverters(AwConverters::class)
  * abstract class AppDatabase : RoomDatabase() { ... }
  * ```
  *
  * 包含的转换：
  * - [Date] ↔ [Long]（时间戳）
- * - [List]<[String]> ↔ [String]（逗号分隔）
- * - [Map]<[String], [String]> ↔ [String]（JSON 格式）
- * - [List]<[Long]> ↔ [String]（逗号分隔）
+ * - [List]<[String]> ↔ [String]（JSON 数组）
+ * - [List]<[Long]> ↔ [String]（JSON 数组）
+ * - [Map]<[String], [String]> ↔ [String]（JSON 对象）
+ * - [Boolean] ↔ [Int]（0/1）
  */
-class BrickConverters {
+class AwConverters {
 
     // ==================== Date ↔ Long ====================
 
@@ -48,57 +50,69 @@ class BrickConverters {
     // ==================== List<String> ↔ String ====================
 
     /**
-     * 逗号分隔字符串 → List<String>。
+     * JSON 数组字符串 → List<String>。
      *
-     * @param value 逗号分隔的字符串，null 或空时返回空列表
+     * @param value JSON 数组字符串，null 或空时返回空列表
      */
     @TypeConverter
     fun fromStringList(value: String?): List<String> {
-        return value?.takeIf { it.isNotBlank() }
-            ?.split(",")
-            ?.map { it.trim() }
-            ?: emptyList()
+        if (value.isNullOrBlank()) return emptyList()
+        return try {
+            val array = JSONArray(value)
+            (0 until array.length()).map { array.getString(it) }
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     /**
-     * List<String> → 逗号分隔字符串。
+     * List<String> → JSON 数组字符串。
      *
      * @param list 字符串列表，null 时返回 null
      */
     @TypeConverter
     fun stringListToString(list: List<String>?): String? {
-        return list?.joinToString(",")
+        if (list == null) return null
+        val array = JSONArray()
+        list.forEach { array.put(it) }
+        return array.toString()
     }
 
     // ==================== List<Long> ↔ String ====================
 
     /**
-     * 逗号分隔字符串 → List<Long>。
+     * JSON 数组字符串 → List<Long>。
      *
-     * @param value 逗号分隔的字符串，null 或空时返回空列表
+     * @param value JSON 数组字符串，null 或空时返回空列表
      */
     @TypeConverter
     fun fromLongList(value: String?): List<Long> {
-        return value?.takeIf { it.isNotBlank() }
-            ?.split(",")
-            ?.mapNotNull { it.trim().toLongOrNull() }
-            ?: emptyList()
+        if (value.isNullOrBlank()) return emptyList()
+        return try {
+            val array = JSONArray(value)
+            (0 until array.length()).map { array.getLong(it) }
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     /**
-     * List<Long> → 逗号分隔字符串。
+     * List<Long> → JSON 数组字符串。
      *
      * @param list Long 列表，null 时返回 null
      */
     @TypeConverter
     fun longListToString(list: List<Long>?): String? {
-        return list?.joinToString(",")
+        if (list == null) return null
+        val array = JSONArray()
+        list.forEach { array.put(it) }
+        return array.toString()
     }
 
     // ==================== Map<String, String> ↔ String ====================
 
     /**
-     * JSON 字符串 → Map<String, String>。
+     * JSON 对象字符串 → Map<String, String>。
      *
      * @param value JSON 字符串，null 或空时返回空 Map
      */
@@ -113,13 +127,12 @@ class BrickConverters {
             }
             map
         } catch (e: Exception) {
-            android.util.Log.w("aw-db", "Failed to parse JSON map: ${e.message}")
             emptyMap()
         }
     }
 
     /**
-     * Map<String, String> → JSON 字符串。
+     * Map<String, String> → JSON 对象字符串。
      *
      * @param map 字符串 Map，null 时返回 null
      */
@@ -127,5 +140,27 @@ class BrickConverters {
     fun stringMapToString(map: Map<String, String>?): String? {
         if (map == null) return null
         return JSONObject(map).toString()
+    }
+
+    // ==================== Boolean ↔ Int ====================
+
+    /**
+     * Int → Boolean。
+     *
+     * @param value 整数值，1 为 true，其余为 false
+     */
+    @TypeConverter
+    fun fromIntToBoolean(value: Int?): Boolean? {
+        return value?.let { it != 0 }
+    }
+
+    /**
+     * Boolean → Int。
+     *
+     * @param value 布尔值，true 为 1，false 为 0
+     */
+    @TypeConverter
+    fun booleanToInt(value: Boolean?): Int? {
+        return value?.let { if (it) 1 else 0 }
     }
 }
