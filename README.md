@@ -1,5 +1,7 @@
 # aw-db
 
+[![](https://jitpack.io/v/answufeng/aw-db.svg)](https://jitpack.io/#answufeng/aw-db)
+
 Room 数据库工具库，提供 DSL 风格的数据库构建器、通用 DAO、事务辅助、类型转换器和结果包装类。
 
 ## 特性

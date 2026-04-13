@@ -51,4 +51,4 @@ dependencies {
     testImplementation("org.json:json:20231013")
 }
 
-apply(from = "${rootDir}/gradle/publish.gradle")
+apply(from = "${rootDir}/gradle/publish.gradle.kts")
