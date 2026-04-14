@@ -3,25 +3,8 @@ package com.answufeng.db
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-/**
- * 数据库调试辅助工具。
- *
- * ### 使用示例
- *
- * ```kotlin
- * val tables = db.tableList()
- * val count = db.rowCount("users")
- * val schema = db.tableSchema("users")
- * ```
- */
 object DbDebugHelper {
 
-    /**
-     * 获取数据库中所有表名。
-     *
-     * @param db RoomDatabase 实例
-     * @return 表名列表
-     */
     fun tableList(db: RoomDatabase): List<String> {
         val tables = mutableListOf<String>()
         val cursor = db.openHelper.readableDatabase.query(
@@ -35,14 +18,10 @@ object DbDebugHelper {
         return tables
     }
 
-    /**
-     * 获取指定表的行数。
-     *
-     * @param db RoomDatabase 实例
-     * @param table 表名
-     * @return 行数
-     */
     fun rowCount(db: RoomDatabase, table: String): Long {
+        require(table.all { it.isLetterOrDigit() || it == '_' }) {
+            "Invalid table name: $table. Only alphanumeric characters and underscores are allowed."
+        }
         val cursor = db.openHelper.readableDatabase.query(
             "SELECT COUNT(*) FROM `$table`"
         )
@@ -52,14 +31,10 @@ object DbDebugHelper {
         return 0L
     }
 
-    /**
-     * 获取指定表的列信息。
-     *
-     * @param db RoomDatabase 实例
-     * @param table 表名
-     * @return 列信息列表（列名、类型、非空、默认值）
-     */
     fun tableSchema(db: RoomDatabase, table: String): List<ColumnInfo> {
+        require(table.all { it.isLetterOrDigit() || it == '_' }) {
+            "Invalid table name: $table. Only alphanumeric characters and underscores are allowed."
+        }
         val columns = mutableListOf<ColumnInfo>()
         val cursor = db.openHelper.readableDatabase.query(
             "PRAGMA table_info(`$table`)"
@@ -80,9 +55,6 @@ object DbDebugHelper {
     }
 }
 
-/**
- * 列信息。
- */
 data class ColumnInfo(
     val name: String,
     val type: String,
@@ -90,17 +62,8 @@ data class ColumnInfo(
     val defaultValue: String?
 )
 
-/**
- * 获取数据库中所有表名。
- */
 fun RoomDatabase.tableList(): List<String> = DbDebugHelper.tableList(this)
 
-/**
- * 获取指定表的行数。
- */
 fun RoomDatabase.rowCount(table: String): Long = DbDebugHelper.rowCount(this, table)
 
-/**
- * 获取指定表的列信息。
- */
 fun RoomDatabase.tableSchema(table: String): List<ColumnInfo> = DbDebugHelper.tableSchema(this, table)

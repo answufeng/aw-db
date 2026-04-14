@@ -6,12 +6,14 @@ Room 数据库工具库，提供 DSL 风格的数据库构建器、通用 DAO、
 
 ## 特性
 
-- 🏗️ **DSL 数据库构建器** — 链式配置迁移、回调、日志模式、预打包数据库等
-- 📦 **通用 BaseDao** — 继承即获得完整 CRUD + Upsert 操作，减少样板代码
-- 🔒 **事务辅助** — `runInTransaction`、`safeTransaction`、`batchExecute`（支持 SKIP/FAIL_FAST 策略）
-- 🔄 **DbResult 密封类** — 统一 Loading/Success/Failure 状态，支持 Flow 和 LiveData
+- 🏗️ **DSL 数据库构建器** — 链式配置迁移、回调、日志模式、预打包数据库、自定义 Executor 等
+- 📦 **通用 BaseDao** — 继承即获得完整 CRUD + Upsert 操作，批量操作自带 `@Transaction` 保证原子性
+- 🔒 **事务辅助** — `withTx`、`safeTransaction`、`batchExecute`（类型安全的 `BatchResult` 密封类，支持 SKIP/FAIL_FAST 策略）
+- 🔄 **DbResult 密封类** — 统一 Loading/Success/Failure 状态，支持 `flatMap`/`mapFailure`/`filter`/`combineDbResults` 等函数式操作
 - 🔀 **Migration DSL** — 简化迁移和回调创建，告别样板代码
-- 🧩 **类型转换器** — Date、List<String>、List<Long>、Map<String, String>、Boolean 开箱即用
+- 🧩 **类型转换器** — Date、Instant、LocalDateTime、LocalDate、List、Set、Map、Boolean、ByteArray、Enum 开箱即用
+- 📄 **Paging 3 集成** — `asPagingFlow()`/`asDbResultPagingFlow()` 直接对接 AndroidX Paging
+- 🏛️ **数据库生命周期管理** — `DatabaseManager` 引用计数单例，防止多实例问题
 
 ## 环境要求
 
@@ -89,6 +91,17 @@ val db = AwDatabase.build<AppDatabase>(context, "app.db") {
 }
 ```
 
+或使用 `DatabaseManager` 管理单例：
+
+```kotlin
+val db = DatabaseManager.getOrCreate<AppDatabase>(context, "app.db") {
+    addMigrations(MIGRATION_1_2)
+}
+
+// 不再使用时释放
+DatabaseManager.release("app.db")
+```
+
 ## API 文档
 
 ### AwDatabase — 数据库构建器
@@ -139,6 +152,15 @@ val db = AwDatabase.build<AppDatabase>(context, "app.db") {
     // 从文件创建
     createFromFile(File("/path/to/db"))
 
+    // 自定义查询线程池
+    setQueryExecutor(Executors.newFixedThreadPool(4))
+
+    // 自定义事务线程池
+    setTransactionExecutor(Executors.newSingleThreadExecutor())
+
+    // 单进程应用可关闭多实例失效通知以减少开销
+    enableMultiInstanceInvalidation(false)
+
     // ⚠️ 仅用于测试！生产环境会导致 ANR
     // allowMainThreadQueries()
 }
@@ -151,16 +173,16 @@ val db = AwDatabase.build<AppDatabase>(context, "app.db") {
 | 方法 | 说明 | 返回值 |
 |------|------|--------|
 | `insert(entity)` | 插入，冲突替换 | 行 ID |
-| `insertAll(entities)` | 批量插入，冲突替换 | 行 ID 列表 |
+| `insertAll(entities)` | 批量插入，冲突替换（`@Transaction`） | 行 ID 列表 |
 | `insertOrIgnore(entity)` | 插入，冲突忽略 | 行 ID（冲突返回 -1） |
 | `update(entity)` | 更新 | 受影响行数 |
-| `updateAll(entities)` | 批量更新 | 受影响行数 |
+| `updateAll(entities)` | 批量更新（`@Transaction`） | 受影响行数 |
 | `delete(entity)` | 删除 | 受影响行数 |
-| `deleteAll(entities)` | 批量删除 | 受影响行数 |
+| `deleteAll(entities)` | 批量删除（`@Transaction`） | 受影响行数 |
 | `upsert(entity)` | 插入或更新（Room 原生 @Upsert） | 行 ID（更新返回 -1） |
-| `upsertAll(entities)` | 批量插入或更新 | 行 ID 列表 |
+| `upsertAll(entities)` | 批量插入或更新（`@Transaction`） | 行 ID 列表 |
 
-> **注意**：所有方法均为 `suspend`，应在协程中调用，推荐使用 `Dispatchers.IO`。
+> **注意**：所有方法均为 `suspend`，Room 自动在 IO 线程执行，无需外部包裹 `withContext(Dispatchers.IO)`。批量操作已标注 `@Transaction`，确保原子性。
 
 ### DbResult — 结果状态包装
 
@@ -202,7 +224,20 @@ result.onSuccess { data -> showData(data) }
 #### 数据转换
 
 ```kotlin
+// map — 转换成功数据
 val names: DbResult<List<String>> = result.map { users -> users.map { it.name } }
+
+// flatMap — 链式操作
+val detail: DbResult<UserDetail> = result.flatMap { user -> fetchDetail(user) }
+
+// mapFailure — 转换错误类型
+val mapped = result.mapFailure { ApiError.from(it) }
+
+// filter — 条件过滤
+val filtered = result.filter { it.isNotEmpty() }
+
+// onEach — 副作用
+result.onEach { log("Got: $it") }
 ```
 
 #### 错误恢复
@@ -222,6 +257,14 @@ val text = result.fold(
 )
 ```
 
+#### 合并多个 DbResult
+
+```kotlin
+val combined = combineDbResults(result1, result2) { users, orders ->
+    Pair(users, orders)
+}
+```
+
 #### Flow 扩展
 
 ```kotlin
@@ -237,10 +280,10 @@ userDao.observeAll().asDbResultWithLoading()
               .onFailure { showError(it) }
     }
 
-// 转为 LiveData
+// 转为 LiveData（带超时自动断开上游 Flow）
 val liveData = userDao.observeAll()
     .asDbResultWithLoading()
-    .asDbResultLiveData()
+    .asDbResultLiveData() // 默认 5 秒超时
 ```
 
 #### 一次性操作包装
@@ -253,17 +296,19 @@ result.onSuccess { user -> showUser(user) }
 
 ### 事务辅助
 
-#### runInTransaction
+#### withTx
 
 在事务中执行操作，任何异常导致回滚：
 
 ```kotlin
-val (userId, orderId) = db.runInTransaction {
+val (userId, orderId) = db.withTx {
     val userId = userDao.insert(user)
     val orderId = orderDao.insert(order.copy(userId = userId))
     Pair(userId, orderId)
 }
 ```
+
+> **迁移提示**：旧方法 `runInTransaction` 已标记 `@Deprecated`，请迁移到 `withTx` 以避免与 `RoomDatabase.runInTransaction` 的命名冲突。
 
 #### safeTransaction
 
@@ -280,17 +325,33 @@ result.onSuccess { println("同步完成") }
 
 #### batchExecute
 
-批量执行操作，支持两种失败策略：
+批量执行操作，返回类型安全的 `BatchResult` 密封类：
 
 ```kotlin
-// SKIP 策略（默认）：跳过失败项，返回成功条数
-val count = db.batchExecute(users) { user ->
+// SKIP 策略（默认）：跳过失败项，返回详细结果
+val result = db.batchExecute(users) { user ->
     userDao.insert(user)
+}
+when (result) {
+    is BatchResult.Skipped -> {
+        println("成功 ${result.successCount} 条，失败 ${result.failedCount} 条")
+        result.failures.forEach { (index, error) ->
+            println("  第 $index 项失败: ${error.message}")
+        }
+    }
+    is BatchResult.AllOrNothing -> {}
 }
 
 // FAIL_FAST 策略：任一失败则全部回滚
 val result = db.batchExecute(users, BatchFailureStrategy.FAIL_FAST) { user ->
     userDao.insert(user)
+}
+when (result) {
+    is BatchResult.Skipped -> {}
+    is BatchResult.AllOrNothing -> {
+        result.result.onSuccess { println("全部成功: $it 条") }
+              .onFailure { println("全部回滚: ${it.message}") }
+    }
 }
 ```
 
@@ -336,16 +397,49 @@ abstract class AppDatabase : RoomDatabase()
 | 类型 | 存储格式 | 说明 |
 |------|---------|------|
 | `Date` ↔ `Long` | 时间戳（毫秒） | null 安全 |
-| `List<String>` ↔ `String` | JSON 数组 | 支持包含逗号/特殊字符的字符串 |
-| `List<Long>` ↔ `String` | JSON 数组 | null 安全 |
-| `Map<String, String>` ↔ `String` | JSON 对象 | null 安全 |
+| `Instant` ↔ `Long` | 毫秒时间戳 | java.time，需脱糖支持 |
+| `LocalDateTime` ↔ `String` | ISO 格式 | java.time，需脱糖支持 |
+| `LocalDate` ↔ `String` | ISO 格式 | java.time，需脱糖支持 |
+| `List<String>` ↔ `String` | JSON 数组 | 使用 kotlinx.serialization |
+| `List<Long>` ↔ `String` | JSON 数组 | 使用 kotlinx.serialization |
+| `Set<String>` ↔ `String` | JSON 数组 | 使用 kotlinx.serialization |
+| `Set<Long>` ↔ `String` | JSON 数组 | 使用 kotlinx.serialization |
+| `Map<String, String>` ↔ `String` | JSON 对象 | 使用 kotlinx.serialization |
+| `Map<String, Long>` ↔ `String` | JSON 对象 | 使用 kotlinx.serialization |
 | `Boolean` ↔ `Int` | 0/1 | SQLite 原生不支持 Boolean |
+| `ByteArray` ↔ `String` | Base64 | 适用于二进制数据 |
+| `Enum` ↔ `String` | 枚举名称 | 泛型支持 |
 
-> **注意**：`List<String>` 和 `List<Long>` 使用 JSON 数组格式（而非逗号分隔），确保字符串内容包含逗号时不会出错。
+> **注意**：JSON 解析失败时会抛出 `IllegalArgumentException`，Room 会将异常传播到查询调用方。这确保了数据损坏可被感知，而非静默返回空集合。
 
-### PagedResult — 分页查询
+> **java.time 脱糖**：使用 `Instant`/`LocalDateTime`/`LocalDate` 转换器需要启用 `coreLibraryDesugaring`。
 
-`PagedResult<T>` 提供分页查询结果的封装：
+### Paging 3 集成
+
+Room 原生支持 `@Query` 返回 `PagingSource<Int, T>`，配合 aw-db 的 Paging 扩展可直接使用：
+
+```kotlin
+@Dao
+abstract class UserDao : BaseDao<User>() {
+    @Query("SELECT * FROM User ORDER BY name ASC")
+    abstract fun pagingSource(): PagingSource<Int, User>
+}
+
+// 基本分页 Flow
+val pagingFlow = userDao.pagingSource().asPagingFlow(pageSize = 20)
+
+// 包装为 DbResult 的分页 Flow
+val dbResultPagingFlow = userDao.pagingSource().asDbResultPagingFlow(pageSize = 20)
+
+// 转换分页数据
+val mappedFlow = dbResultPagingFlow.mapResult { user ->
+    UserUiModel(user)
+}
+```
+
+### PagedResult — 手动分页
+
+`PagedResult<T>` 提供手动分页查询结果的封装：
 
 ```kotlin
 data class PagedResult<T>(
@@ -356,8 +450,6 @@ data class PagedResult<T>(
     val hasMore: Boolean   // 是否还有更多数据
 )
 ```
-
-#### 手动分页
 
 ```kotlin
 @Dao
@@ -380,14 +472,22 @@ result.items.forEach { showUser(it) }
 if (result.hasMore) loadMore()
 ```
 
-#### Flow 分页
+### DatabaseManager — 数据库生命周期管理
 
-适用于已加载全部数据但需要分页展示的场景：
+`DatabaseManager` 提供引用计数的数据库单例管理，防止多实例打开同一数据库文件：
 
 ```kotlin
-userDao.observeAll()
-    .paginate(page = 0, pageSize = 20)
-    .collect { pageItems -> showPage(pageItems) }
+// 获取数据库实例（自动引用计数）
+val db = DatabaseManager.getOrCreate<AppDatabase>(context, "app.db") {
+    addMigrations(MIGRATION_1_2)
+    setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+}
+
+// 释放引用（计数归零时自动关闭数据库）
+DatabaseManager.release("app.db")
+
+// 关闭所有数据库实例
+DatabaseManager.closeAll()
 ```
 
 ### DbDebugHelper — 调试工具
@@ -398,7 +498,7 @@ userDao.observeAll()
 // 获取所有表名
 val tables = db.tableList()
 
-// 获取表行数
+// 获取表行数（表名仅允许字母数字和下划线）
 val count = db.rowCount("users")
 
 // 获取表结构
@@ -412,24 +512,33 @@ columns.forEach { col ->
 
 ### 协程调度
 
-所有 `BaseDao` 的方法均为 `suspend`，Room 默认使用 IO 调度器。在 ViewModel 或 Presenter 中调用时：
+所有 `BaseDao` 的方法均为 `suspend`，Room 默认使用 IO 调度器。**无需**外部包裹 `withContext(Dispatchers.IO)`：
 
 ```kotlin
-// ✅ Room 自动在 IO 线程执行，无需额外指定 Dispatcher
+// ✅ Room 自动在 IO 线程执行
 viewModelScope.launch {
     val users = userDao.getAll()
 }
 
-// ✅ 如果需要与其他 IO 操作组合
+// ❌ 多余的 withContext(Dispatchers.IO)
 viewModelScope.launch {
-    val users = withContext(Dispatchers.IO) { userDao.getAll() }
+    val users = withContext(Dispatchers.IO) { userDao.getAll() } // 不需要！
 }
 ```
 
 ### 数据库生命周期
 
-- **单例模式**：数据库实例应该是单例的，避免重复创建导致资源浪费
-- **关闭数据库**：通常不需要手动关闭，系统会在进程退出时自动处理
+使用 `DatabaseManager` 管理数据库单例，避免多实例问题：
+
+```kotlin
+// ✅ 推荐：使用 DatabaseManager
+val db = DatabaseManager.getOrCreate<AppDatabase>(context, "app.db")
+
+// 释放
+DatabaseManager.release("app.db")
+```
+
+或手动实现单例：
 
 ```kotlin
 object DatabaseProvider {
@@ -465,11 +574,21 @@ userDao.observeAll()
     }
 ```
 
+### 分页
+
+```kotlin
+// ✅ 推荐：使用 Paging 3（数据库级分页，高效）
+userDao.pagingSource().asPagingFlow()
+
+// ❌ 不推荐：内存分页（已标记 @Deprecated）
+userDao.observeAll().paginate(page = 0, pageSize = 20)
+```
+
 ## 常见问题
 
 ### Q: 为什么不用逗号分隔存储 List？
 
-逗号分隔在字符串本身包含逗号时会出错。aw-db 使用 JSON 数组格式，确保数据完整性。
+逗号分隔在字符串本身包含逗号时会出错。aw-db 使用 JSON 格式（基于 `kotlinx.serialization`），确保数据完整性。
 
 ### Q: upsert 和 insert 有什么区别？
 
@@ -479,12 +598,20 @@ userDao.observeAll()
 ### Q: batchExecute 和 insertAll 有什么区别？
 
 - `insertAll`：Room 原生批量插入，性能最优，但冲突策略固定
-- `batchExecute`：逐条执行自定义操作，支持 SKIP/FAIL_FAST 策略，适用于需要自定义逻辑的场景
+- `batchExecute`：逐条执行自定义操作，支持 SKIP/FAIL_FAST 策略，返回类型安全的 `BatchResult`
 
 ### Q: 什么时候用 asDbResult() vs asDbResultWithLoading()？
 
 - `asDbResult()`：不需要 Loading 状态的场景（如后台同步）
 - `asDbResultWithLoading()`：需要在 UI 展示加载状态的场景（如列表页面）
+
+### Q: TypeConverter 解析失败会怎样？
+
+JSON 解析失败时会抛出 `IllegalArgumentException`，Room 会将异常传播到查询调用方。这确保了数据损坏可被感知，而非静默返回空集合。如果你需要容错行为，请在调用方自行 try-catch。
+
+### Q: 为什么 runInTransaction 被标记为 @Deprecated？
+
+`RoomDatabase` 已有同名方法 `runInTransaction`（非 suspend 版本），扩展函数会造成命名冲突。请迁移到 `withTx`。
 
 ## 许可证
 

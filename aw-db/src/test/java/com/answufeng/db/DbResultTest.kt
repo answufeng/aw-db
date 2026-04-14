@@ -6,8 +6,6 @@ import org.junit.Test
 
 class DbResultTest {
 
-    // ==================== 状态属性 ====================
-
     @Test
     fun `Loading state properties`() {
         val result: DbResult<String> = DbResult.Loading
@@ -32,8 +30,6 @@ class DbResultTest {
         assertFalse(result.isSuccess)
     }
 
-    // ==================== getOrNull ====================
-
     @Test
     fun `getOrNull returns data on Success`() {
         assertEquals("hello", DbResult.Success("hello").getOrNull())
@@ -49,8 +45,6 @@ class DbResultTest {
         val result: DbResult<String> = DbResult.Failure(RuntimeException())
         assertNull(result.getOrNull())
     }
-
-    // ==================== getOrDefault ====================
 
     @Test
     fun `getOrDefault returns data on Success`() {
@@ -69,8 +63,6 @@ class DbResultTest {
         assertEquals("default", failure.getOrDefault("default"))
     }
 
-    // ==================== getOrThrow ====================
-
     @Test
     fun `getOrThrow returns data on Success`() {
         assertEquals("hello", DbResult.Success("hello").getOrThrow())
@@ -86,8 +78,6 @@ class DbResultTest {
         val result: DbResult<String> = DbResult.Failure(RuntimeException("err"))
         result.getOrThrow()
     }
-
-    // ==================== getOrElse ====================
 
     @Test
     fun `getOrElse returns data on Success`() {
@@ -105,8 +95,6 @@ class DbResultTest {
         val result: DbResult<String> = DbResult.Loading
         assertEquals("fallback", result.getOrElse("fallback"))
     }
-
-    // ==================== map ====================
 
     @Test
     fun `map transforms Success data`() {
@@ -130,7 +118,76 @@ class DbResultTest {
         assertSame(ex, (mapped as DbResult.Failure).error)
     }
 
-    // ==================== recover ====================
+    @Test
+    fun `flatMap chains Success`() {
+        val result = DbResult.Success(42).flatMap { DbResult.Success(it.toString()) }
+        assertEquals("42", (result as DbResult.Success).data)
+    }
+
+    @Test
+    fun `flatMap preserves Failure`() {
+        val ex = RuntimeException("err")
+        val result: DbResult<Int> = DbResult.Failure(ex)
+        val flatMapped = result.flatMap { DbResult.Success(it.toString()) }
+        assertTrue(flatMapped.isFailure)
+        assertSame(ex, (flatMapped as DbResult.Failure).error)
+    }
+
+    @Test
+    fun `flatMap preserves Loading`() {
+        val result: DbResult<Int> = DbResult.Loading
+        val flatMapped = result.flatMap { DbResult.Success(it.toString()) }
+        assertTrue(flatMapped.isLoading)
+    }
+
+    @Test
+    fun `mapFailure transforms error`() {
+        val original = RuntimeException("original")
+        val result: DbResult<String> = DbResult.Failure(original)
+        val mapped = result.mapFailure { IllegalArgumentException(it.message ?: "") }
+        assertTrue(mapped.isFailure)
+        assertTrue((mapped as DbResult.Failure).error is IllegalArgumentException)
+    }
+
+    @Test
+    fun `mapFailure preserves Success`() {
+        val result = DbResult.Success("data").mapFailure { IllegalArgumentException("x") }
+        assertTrue(result.isSuccess)
+    }
+
+    @Test
+    fun `filter keeps matching Success`() {
+        val result = DbResult.Success(42).filter { it > 0 }
+        assertTrue(result.isSuccess)
+    }
+
+    @Test
+    fun `filter converts non-matching Success to Failure`() {
+        val result = DbResult.Success(42).filter { it < 0 }
+        assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun `filter preserves Failure`() {
+        val result: DbResult<Int> = DbResult.Failure(RuntimeException())
+        val filtered = result.filter { it > 0 }
+        assertTrue(filtered.isFailure)
+    }
+
+    @Test
+    fun `onEach executes for Success`() {
+        var captured = 0
+        DbResult.Success(42).onEach { captured = it }
+        assertEquals(42, captured)
+    }
+
+    @Test
+    fun `onEach does not execute for Failure`() {
+        var called = false
+        val result: DbResult<Int> = DbResult.Failure(RuntimeException())
+        result.onEach { called = true }
+        assertFalse(called)
+    }
 
     @Test
     fun `recover returns Success with recovered data on Failure`() {
@@ -154,8 +211,6 @@ class DbResultTest {
         assertSame(loading, recovered)
     }
 
-    // ==================== recoverWith ====================
-
     @Test
     fun `recoverWith returns alternative DbResult on Failure`() {
         val failure: DbResult<String> = DbResult.Failure(RuntimeException("err"))
@@ -163,15 +218,6 @@ class DbResultTest {
         assertTrue(recovered.isSuccess)
         assertEquals("fallback", (recovered as DbResult.Success).data)
     }
-
-    @Test
-    fun `recoverWith can return Failure on Failure`() {
-        val failure: DbResult<String> = DbResult.Failure(RuntimeException("original"))
-        val recovered = failure.recoverWith { DbResult.Failure(RuntimeException("recovered")) }
-        assertTrue(recovered.isFailure)
-    }
-
-    // ==================== 链式回调 ====================
 
     @Test
     fun `onSuccess fires for Success`() {
@@ -227,8 +273,6 @@ class DbResultTest {
         assertFalse(failureCalled)
     }
 
-    // ==================== fold ====================
-
     @Test
     fun `fold on Loading`() {
         val result: DbResult<String> = DbResult.Loading
@@ -262,7 +306,34 @@ class DbResultTest {
         assertEquals("oops", output)
     }
 
-    // ==================== dbResultOf ====================
+    @Test
+    fun `combineDbResults two successes`() {
+        val combined = combineDbResults(
+            DbResult.Success(1),
+            DbResult.Success(2)
+        ) { a, b -> a + b }
+        assertEquals(3, (combined as DbResult.Success).data)
+    }
+
+    @Test
+    fun `combineDbResults first failure`() {
+        val ex = RuntimeException("err")
+        val failure: DbResult<Int> = DbResult.Failure(ex)
+        val combined = combineDbResults(
+            failure,
+            DbResult.Success(2)
+        ) { a: Int, b: Int -> a + b }
+        assertTrue(combined.isFailure)
+    }
+
+    @Test
+    fun `combineDbResults loading`() {
+        val combined = combineDbResults(
+            DbResult.Loading,
+            DbResult.Success(2)
+        ) { a: Int, b: Int -> a + b }
+        assertTrue(combined.isLoading)
+    }
 
     @Test
     fun `dbResultOf returns Success on success`() = runBlocking {

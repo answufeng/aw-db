@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlinx.serialization)
 }
 
 android {
@@ -40,15 +41,16 @@ android {
 dependencies {
     api(libs.room.runtime)
     api(libs.room.ktx)
+    implementation(libs.room.paging)
     implementation(libs.core.ktx)
     implementation(libs.annotation)
     implementation(libs.coroutines.core)
     implementation(libs.coroutines.android)
     implementation(libs.lifecycle.livedata.ktx)
+    api(libs.kotlinx.serialization.json)
 
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)
-    testImplementation("org.json:json:20231013")
 }
 
 apply(from = "${rootDir}/gradle/publish.gradle.kts")

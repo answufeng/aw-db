@@ -8,10 +8,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.answufeng.db.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
 
@@ -26,7 +23,7 @@ class MainActivity : AppCompatActivity() {
         val container = findViewById<LinearLayout>(R.id.container)
         container.addView(tvLog)
 
-        db = AwDatabase.build(this, "demo.db") {
+        db = DatabaseManager.getOrCreate<AppDatabase>(this, "demo.db") {
             fallbackToDestructiveMigration()
         }
 
@@ -38,9 +35,15 @@ class MainActivity : AppCompatActivity() {
         container.addView(button("Count Users") { countUsers() })
         container.addView(button("Delete All") { deleteUsers() })
         container.addView(button("Test DbResult") { testDbResult() })
-        container.addView(button("Test Transaction") { testTransaction() })
+        container.addView(button("Test withTx") { testWithTx() })
         container.addView(button("Test BatchExecute") { testBatchExecute() })
+        container.addView(button("Test DbResult flatMap") { testFlatMap() })
         container.addView(button("Observe Flow") { observeFlow() })
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        DatabaseManager.release("demo.db")
     }
 
     private fun button(text: String, onClick: () -> Unit): Button {
@@ -60,7 +63,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val dao = db.userDao()
             val user = User(name = "User-${System.currentTimeMillis() % 1000}", age = (20..60).random())
-            val id = withContext(Dispatchers.IO) { dao.insert(user) }
+            val id = dao.insert(user)
             log("Inserted: $user, id=$id")
         }
     }
@@ -71,14 +74,14 @@ class MainActivity : AppCompatActivity() {
             val users = (1..5).map {
                 User(name = "Batch-$it", age = (20..30).random())
             }
-            val ids = withContext(Dispatchers.IO) { dao.insertAll(users) }
+            val ids = dao.insertAll(users)
             log("Batch inserted ${ids.size} users, ids=$ids")
         }
     }
 
     private fun queryUsers() {
         lifecycleScope.launch {
-            val users = withContext(Dispatchers.IO) { db.userDao().getAll() }
+            val users = db.userDao().getAll()
             log("Users: ${users.size}")
             users.forEach { log("  $it") }
         }
@@ -86,7 +89,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun queryById() {
         lifecycleScope.launch {
-            val user = withContext(Dispatchers.IO) { db.userDao().getById(1) }
+            val user = db.userDao().getById(1)
             if (user != null) {
                 log("Found: $user")
             } else {
@@ -99,28 +102,28 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val dao = db.userDao()
             val user = User(id = 1, name = "Upserted-${System.currentTimeMillis() % 1000}", age = 99)
-            val id = withContext(Dispatchers.IO) { dao.upsert(user) }
+            val id = dao.upsert(user)
             log("Upserted: $user, result=$id")
         }
     }
 
     private fun countUsers() {
         lifecycleScope.launch {
-            val count = withContext(Dispatchers.IO) { db.userDao().count() }
+            val count = db.userDao().count()
             log("User count: $count")
         }
     }
 
     private fun deleteUsers() {
         lifecycleScope.launch {
-            withContext(Dispatchers.IO) { db.userDao().deleteAll() }
+            db.userDao().deleteAll()
             log("All users deleted")
         }
     }
 
     private fun testDbResult() {
         lifecycleScope.launch {
-            val result = dbResultOf { withContext(Dispatchers.IO) { db.userDao().getAll() } }
+            val result = dbResultOf { db.userDao().getAll() }
             result.fold(
                 onLoading = { log("Loading...") },
                 onSuccess = { log("DbResult Success: ${it.size} users") },
@@ -129,7 +132,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun testTransaction() {
+    private fun testWithTx() {
         lifecycleScope.launch {
             val result = db.safeTransaction {
                 val dao = userDao()
@@ -148,10 +151,25 @@ class MainActivity : AppCompatActivity() {
             val users = (1..5).map {
                 User(name = "BatchExec-$it", age = (20..30).random())
             }
-            val count = db.batchExecute(users) { user ->
+            val result = db.batchExecute(users) { user ->
                 dao.insert(user)
             }
-            log("BatchExecute success count: $count")
+            when (result) {
+                is BatchResult.Skipped -> log("BatchExecute success: ${result.successCount}, failed: ${result.failedCount}")
+                is BatchResult.AllOrNothing -> result.result.onSuccess { log("BatchExecute all success: $it") }
+                    .onFailure { log("BatchExecute failed: ${it.message}") }
+            }
+        }
+    }
+
+    private fun testFlatMap() {
+        lifecycleScope.launch {
+            val userResult = dbResultOf { db.userDao().getById(1) }
+            val result = userResult.flatMap { user ->
+                DbResult.Success(listOf(user))
+            }
+            result.onSuccess { log("flatMap result: ${it.size} users") }
+                .onFailure { log("flatMap failure: ${it.message}") }
         }
     }
 
@@ -159,7 +177,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             db.userDao().observeAll()
                 .asDbResultWithLoading()
-                .collectLatest { result ->
+                .collect { result ->
                     result.fold(
                         onLoading = { log("[Flow] Loading...") },
                         onSuccess = { log("[Flow] Received: ${it.size} users") },

@@ -1,12 +1,14 @@
 package com.answufeng.db
 
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.junit.Assert.*
 import org.junit.Test
 import java.util.Date
 
 class AwConvertersTest {
 
-    private val converters = AwConverters()
+    private val converters = AwConverters
 
     // ==================== Date ↔ Long ====================
 
@@ -86,9 +88,9 @@ class AwConvertersTest {
         assertEquals(list, back)
     }
 
-    @Test
-    fun `fromStringList invalid json returns empty`() {
-        assertEquals(emptyList<String>(), converters.fromStringList("not json"))
+    @Test(expected = IllegalArgumentException::class)
+    fun `fromStringList invalid json throws`() {
+        converters.fromStringList("not json")
     }
 
     @Test
@@ -99,7 +101,7 @@ class AwConvertersTest {
     @Test
     fun `stringListToString empty list returns empty json array`() {
         val result = converters.stringListToString(emptyList())
-        assertEquals("[]", result)
+        assertEquals(emptyList<String>(), converters.fromStringList(result))
     }
 
     @Test
@@ -131,9 +133,9 @@ class AwConvertersTest {
         assertEquals(listOf(1L, 2L, 3L), converters.fromLongList("[1,2,3]"))
     }
 
-    @Test
-    fun `fromLongList invalid json returns empty`() {
-        assertEquals(emptyList<Long>(), converters.fromLongList("not json"))
+    @Test(expected = IllegalArgumentException::class)
+    fun `fromLongList invalid json throws`() {
+        converters.fromLongList("not json")
     }
 
     @Test
@@ -149,8 +151,42 @@ class AwConvertersTest {
     }
 
     @Test
-    fun `longListToString empty list returns empty json array`() {
-        assertEquals("[]", converters.longListToString(emptyList()))
+    fun `longListToString empty list roundtrip`() {
+        val json = converters.longListToString(emptyList())
+        assertEquals(emptyList<Long>(), converters.fromLongList(json))
+    }
+
+    // ==================== Set<String> ↔ String ====================
+
+    @Test
+    fun `fromStringSet null returns empty`() {
+        assertEquals(emptySet<String>(), converters.fromStringSet(null))
+    }
+
+    @Test
+    fun `stringSetToString roundtrip`() {
+        val set = setOf("a", "b", "c")
+        val json = converters.stringSetToString(set)
+        assertEquals(set, converters.fromStringSet(json))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `fromStringSet invalid json throws`() {
+        converters.fromStringSet("not json")
+    }
+
+    // ==================== Set<Long> ↔ String ====================
+
+    @Test
+    fun `fromLongSet null returns empty`() {
+        assertEquals(emptySet<Long>(), converters.fromLongSet(null))
+    }
+
+    @Test
+    fun `longSetToString roundtrip`() {
+        val set = setOf(1L, 2L, 3L)
+        val json = converters.longSetToString(set)
+        assertEquals(set, converters.fromLongSet(json))
     }
 
     // ==================== Map<String, String> ↔ String ====================
@@ -165,9 +201,9 @@ class AwConvertersTest {
         assertEquals(emptyMap<String, String>(), converters.fromStringMap(""))
     }
 
-    @Test
-    fun `fromStringMap invalid json returns empty`() {
-        assertEquals(emptyMap<String, String>(), converters.fromStringMap("not json"))
+    @Test(expected = IllegalArgumentException::class)
+    fun `fromStringMap invalid json throws`() {
+        converters.fromStringMap("not json")
     }
 
     @Test
@@ -196,8 +232,21 @@ class AwConvertersTest {
     fun `stringMap empty map roundtrip`() {
         val map = emptyMap<String, String>()
         val json = converters.stringMapToString(map)
-        assertEquals("{}", json)
         assertEquals(map, converters.fromStringMap(json))
+    }
+
+    // ==================== Map<String, Long> ↔ String ====================
+
+    @Test
+    fun `fromLongMap null returns empty`() {
+        assertEquals(emptyMap<String, Long>(), converters.fromLongMap(null))
+    }
+
+    @Test
+    fun `longMapToString roundtrip`() {
+        val map = mapOf("a" to 1L, "b" to 2L)
+        val json = converters.longMapToString(map)
+        assertEquals(map, converters.fromLongMap(json))
     }
 
     // ==================== Boolean ↔ Int ====================
@@ -241,5 +290,26 @@ class AwConvertersTest {
     fun `boolean roundtrip`() {
         assertEquals(true, converters.fromIntToBoolean(converters.booleanToInt(true)))
         assertEquals(false, converters.fromIntToBoolean(converters.booleanToInt(false)))
+    }
+
+    // ==================== ByteArray ↔ Base64 ====================
+
+    @Test
+    fun `byteArray roundtrip`() {
+        val data = byteArrayOf(0x01, 0x02, 0x03, 0xFF.toByte())
+        val encoded = converters.byteArrayToBase64(data)
+        assertNotNull(encoded)
+        val decoded = converters.fromBase64(encoded)
+        assertArrayEquals(data, decoded)
+    }
+
+    @Test
+    fun `byteArrayToBase64 null returns null`() {
+        assertNull(converters.byteArrayToBase64(null))
+    }
+
+    @Test
+    fun `fromBase64 null returns null`() {
+        assertNull(converters.fromBase64(null))
     }
 }

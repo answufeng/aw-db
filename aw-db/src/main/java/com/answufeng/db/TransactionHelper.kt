@@ -10,7 +10,7 @@ import androidx.room.withTransaction
  *
  * #### 基本事务
  * ```kotlin
- * val result = database.runInTransaction {
+ * val result = database.withTx {
  *     val userId = userDao.insert(user)
  *     val orderId = orderDao.insert(order.copy(userId = userId))
  *     Pair(userId, orderId)
@@ -29,11 +29,22 @@ import androidx.room.withTransaction
  *
  * #### 批量执行
  * ```kotlin
+ * // 跳过失败项
  * val result = database.batchExecute(users) { user ->
  *     userDao.insert(user)
  * }
- * result.onSuccess { count -> println("成功 $count 条") }
- *       .onFailure { println("全部回滚: ${it.message}") }
+ * if (result is BatchResult.Skipped) {
+ *     println("成功 ${result.successCount} 条，失败 ${result.failedCount} 条")
+ * }
+ *
+ * // 任一失败则全部回滚
+ * val result = database.batchExecute(users, BatchFailureStrategy.FAIL_FAST) { user ->
+ *     userDao.insert(user)
+ * }
+ * if (result is BatchResult.AllOrNothing) {
+ *     result.result.onSuccess { println("全部成功: $it 条") }
+ *           .onFailure { println("全部回滚: ${it.message}") }
+ * }
  * ```
  */
 
@@ -47,6 +58,17 @@ import androidx.room.withTransaction
  * @param block 在事务中执行的挂起操作
  * @return 事务执行的结果
  */
+suspend fun <T : RoomDatabase, R> T.withTx(block: suspend T.() -> R): R {
+    return withTransaction { block() }
+}
+
+/**
+ * @suppress 保留旧 API 兼容，建议迁移到 [withTx]。
+ */
+@Deprecated(
+    message = "Use withTx instead to avoid naming conflict with RoomDatabase.runInTransaction",
+    replaceWith = ReplaceWith("withTx(block)")
+)
 suspend fun <T : RoomDatabase, R> T.runInTransaction(block: suspend T.() -> R): R {
     return withTransaction { block() }
 }
@@ -81,15 +103,44 @@ suspend fun <T : RoomDatabase, R> T.safeTransaction(block: suspend T.() -> R): R
 enum class BatchFailureStrategy {
     /**
      * 跳过失败项，继续处理后续项。
-     * 事务整体不会回滚，返回成功处理的条数。
+     * 事务整体不会回滚，返回 [BatchResult.Skipped]。
      */
     SKIP,
 
     /**
      * 任何一项失败则回滚整个事务。
-     * 事务失败时返回 [Result.failure]。
+     * 事务失败时返回 [BatchResult.AllOrNothing]。
      */
     FAIL_FAST
+}
+
+/**
+ * 批量执行结果，使用密封类保证类型安全。
+ *
+ * - [Skipped]: SKIP 策略的结果，包含成功/失败计数及失败详情
+ * - [AllOrNothing]: FAIL_FAST 策略的结果，全部成功或全部回滚
+ */
+sealed class BatchResult<out T> {
+
+    /**
+     * SKIP 策略的结果：跳过失败项，继续处理。
+     *
+     * @property successCount 成功处理的条数
+     * @property failedCount 失败的条数
+     * @property failures 失败项的索引和异常信息
+     */
+    data class Skipped<T>(
+        val successCount: Int,
+        val failedCount: Int,
+        val failures: List<IndexedValue<Throwable>> = emptyList()
+    ) : BatchResult<T>()
+
+    /**
+     * FAIL_FAST 策略的结果：全部成功或全部回滚。
+     *
+     * @property result 成功时包含处理的条数，失败时包含异常
+     */
+    data class AllOrNothing<T>(val result: Result<Int>) : BatchResult<T>()
 }
 
 /**
@@ -97,8 +148,12 @@ enum class BatchFailureStrategy {
  *
  * ```kotlin
  * // 跳过失败项
- * val count = database.batchExecute(users) { user ->
+ * val result = database.batchExecute(users) { user ->
  *     userDao.insert(user)
+ * }
+ * when (result) {
+ *     is BatchResult.Skipped -> println("成功 ${result.successCount} 条")
+ *     is BatchResult.AllOrNothing -> {}
  * }
  *
  * // 任一失败则全部回滚
@@ -112,40 +167,39 @@ enum class BatchFailureStrategy {
  * @param items 要处理的数据列表
  * @param strategy 失败策略，默认 [BatchFailureStrategy.SKIP]
  * @param action 对每个元素执行的操作
- * @return SKIP 策略下返回成功处理的条数；FAIL_FAST 策略下返回 [Result]
+ * @return [BatchResult] 类型安全的批量执行结果
  */
 suspend fun <T : RoomDatabase, E> T.batchExecute(
     items: List<E>,
     strategy: BatchFailureStrategy = BatchFailureStrategy.SKIP,
     action: suspend (E) -> Unit
-): Any {
-    return when (strategy) {
-        BatchFailureStrategy.SKIP -> {
-            var count = 0
-            withTransaction {
-                for (item in items) {
-                    try {
-                        action(item)
-                        count++
-                    } catch (_: Exception) {
-                        // skip failed item
-                    }
+): BatchResult<E> = when (strategy) {
+    BatchFailureStrategy.SKIP -> {
+        var successCount = 0
+        val failures = mutableListOf<IndexedValue<Throwable>>()
+        withTransaction {
+            items.forEachIndexed { index, item ->
+                try {
+                    action(item)
+                    successCount++
+                } catch (e: Exception) {
+                    failures.add(IndexedValue(index, e))
                 }
             }
-            count
         }
+        BatchResult.Skipped(successCount, items.size - successCount, failures)
+    }
 
-        BatchFailureStrategy.FAIL_FAST -> {
+    BatchFailureStrategy.FAIL_FAST -> {
+        BatchResult.AllOrNothing(
             try {
-                withTransaction {
-                    for (item in items) {
-                        action(item)
-                    }
+                Result.success(withTransaction {
+                    items.forEach { item -> action(item) }
                     items.size
-                }
+                })
             } catch (e: Exception) {
-                Result.failure<Int>(e)
+                Result.failure(e)
             }
-        }
+        )
     }
 }
