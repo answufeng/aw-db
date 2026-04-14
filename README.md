@@ -21,23 +21,17 @@ Room 数据库工具库，提供 DSL 风格的数据库构建器、通用 DAO、
 
 ## 引入
 
-在模块级 `build.gradle.kts` 中添加依赖：
-
 ```kotlin
-dependencies {
-    implementation("com.github.answufeng:aw-db:1.0.0")
-}
-```
-
-确保根 `settings.gradle.kts` 中配置了 JitPack 仓库：
-
-```kotlin
+// settings.gradle.kts
 dependencyResolutionManagement {
     repositories {
-        google()
-        mavenCentral()
-        maven("https://jitpack.io")
+        maven { url = uri("https://jitpack.io") }
     }
+}
+
+// app/build.gradle.kts
+dependencies {
+    implementation("com.github.answufeng:aw-db:1.0.0")
 }
 ```
 
