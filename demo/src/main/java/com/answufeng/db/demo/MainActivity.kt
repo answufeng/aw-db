@@ -2,7 +2,6 @@ package com.answufeng.db.demo
 
 import android.os.Bundle
 import android.widget.Button
-import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -10,178 +9,202 @@ import androidx.lifecycle.lifecycleScope
 import com.answufeng.db.*
 import kotlinx.coroutines.launch
 
+/**
+ * aw-db 库功能演示
+ * 包含：基本CRUD、事务、批量操作、Flow观察
+ */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var db: AppDatabase
     private lateinit var tvLog: TextView
+    private lateinit var logScrollView: ScrollView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        tvLog = TextView(this).apply { textSize = 14f }
-        val container = findViewById<LinearLayout>(R.id.container)
-        container.addView(tvLog)
+        // 绑定视图
+        tvLog = findViewById(R.id.tvLog)
+        logScrollView = tvLog.parent as ScrollView
 
+        // 基本操作按钮
+        findViewById<Button>(R.id.btnInsert).setOnClickListener { insertUser() }
+        findViewById<Button>(R.id.btnBatchInsert).setOnClickListener { batchInsert() }
+        findViewById<Button>(R.id.btnQueryAll).setOnClickListener { queryUsers() }
+        findViewById<Button>(R.id.btnQueryById).setOnClickListener { queryById() }
+        findViewById<Button>(R.id.btnUpsert).setOnClickListener { upsertUser() }
+        findViewById<Button>(R.id.btnCount).setOnClickListener { countUsers() }
+        findViewById<Button>(R.id.btnDeleteAll).setOnClickListener { deleteUsers() }
+
+        // 高级功能按钮
+        findViewById<Button>(R.id.btnDbResult).setOnClickListener { testDbResult() }
+        findViewById<Button>(R.id.btnTransaction).setOnClickListener { testWithTx() }
+        findViewById<Button>(R.id.btnBatchExecute).setOnClickListener { testBatchExecute() }
+        findViewById<Button>(R.id.btnFlatMap).setOnClickListener { testFlatMap() }
+        findViewById<Button>(R.id.btnObserveFlow).setOnClickListener { observeFlow() }
+
+        // 管理按钮
+        findViewById<Button>(R.id.btnClearLog).setOnClickListener { clearLog() }
+
+        // 初始化数据库
         db = DatabaseManager.getOrCreate<AppDatabase>(this, "demo.db") {
             fallbackToDestructiveMigration()
         }
-
-        container.addView(button("Insert User") { insertUser() })
-        container.addView(button("Batch Insert") { batchInsert() })
-        container.addView(button("Query All") { queryUsers() })
-        container.addView(button("Query By ID") { queryById() })
-        container.addView(button("Upsert User") { upsertUser() })
-        container.addView(button("Count Users") { countUsers() })
-        container.addView(button("Delete All") { deleteUsers() })
-        container.addView(button("Test DbResult") { testDbResult() })
-        container.addView(button("Test withTx") { testWithTx() })
-        container.addView(button("Test BatchExecute") { testBatchExecute() })
-        container.addView(button("Test DbResult flatMap") { testFlatMap() })
-        container.addView(button("Observe Flow") { observeFlow() })
+        log("✅ 数据库初始化完成: demo.db")
     }
 
     override fun onDestroy() {
         super.onDestroy()
         DatabaseManager.release("demo.db")
-    }
-
-    private fun button(text: String, onClick: () -> Unit): Button {
-        return Button(this).apply {
-            this.text = text
-            setOnClickListener { onClick() }
-        }
+        log("🔚 数据库连接已释放")
     }
 
     private fun log(msg: String) {
         tvLog.append("$msg\n")
-        val scrollView = tvLog.parent as? ScrollView
-        scrollView?.post { scrollView.fullScroll(ScrollView.FOCUS_DOWN) }
+        logScrollView.post { logScrollView.fullScroll(ScrollView.FOCUS_DOWN) }
+        android.util.Log.d("AwDBDemo", msg)
+    }
+
+    private fun clearLog() {
+        tvLog.text = ""
+        log("🗑️ 日志已清除")
     }
 
     private fun insertUser() {
         lifecycleScope.launch {
+            log("🔄 开始插入用户...")
             val dao = db.userDao()
-            val user = User(name = "User-${System.currentTimeMillis() % 1000}", age = (20..60).random())
+            val user = User(name = "用户-${System.currentTimeMillis() % 1000}", age = (20..60).random())
             val id = dao.insert(user)
-            log("Inserted: $user, id=$id")
+            log("✅ 插入成功: $user, ID=$id")
         }
     }
 
     private fun batchInsert() {
         lifecycleScope.launch {
+            log("🔄 开始批量插入...")
             val dao = db.userDao()
             val users = (1..5).map {
-                User(name = "Batch-$it", age = (20..30).random())
+                User(name = "批量-$it", age = (20..30).random())
             }
             val ids = dao.insertAll(users)
-            log("Batch inserted ${ids.size} users, ids=$ids")
+            log("✅ 批量插入成功: ${ids.size}个用户, IDs=$ids")
         }
     }
 
     private fun queryUsers() {
         lifecycleScope.launch {
+            log("🔄 开始查询所有用户...")
             val users = db.userDao().getAll()
-            log("Users: ${users.size}")
+            log("📋 用户总数: ${users.size}")
             users.forEach { log("  $it") }
         }
     }
 
     private fun queryById() {
         lifecycleScope.launch {
+            log("🔄 开始根据ID查询...")
             val user = db.userDao().getById(1)
             if (user != null) {
-                log("Found: $user")
+                log("✅ 找到用户: $user")
             } else {
-                log("User not found (id=1)")
+                log("❌ 未找到用户 (ID=1)")
             }
         }
     }
 
     private fun upsertUser() {
         lifecycleScope.launch {
+            log("🔄 开始更新/插入用户...")
             val dao = db.userDao()
-            val user = User(id = 1, name = "Upserted-${System.currentTimeMillis() % 1000}", age = 99)
+            val user = User(id = 1, name = "更新-${System.currentTimeMillis() % 1000}", age = 99)
             val id = dao.upsert(user)
-            log("Upserted: $user, result=$id")
+            log("✅ 更新/插入成功: $user, 结果=$id")
         }
     }
 
     private fun countUsers() {
         lifecycleScope.launch {
+            log("🔄 开始统计用户数...")
             val count = db.userDao().count()
-            log("User count: $count")
+            log("📊 用户总数: $count")
         }
     }
 
     private fun deleteUsers() {
         lifecycleScope.launch {
+            log("🔄 开始删除所有用户...")
             db.userDao().deleteAll()
-            log("All users deleted")
+            log("✅ 所有用户已删除")
         }
     }
 
     private fun testDbResult() {
         lifecycleScope.launch {
+            log("🔄 开始测试 DbResult...")
             val result = dbResultOf { db.userDao().getAll() }
             result.fold(
-                onLoading = { log("Loading...") },
-                onSuccess = { log("DbResult Success: ${it.size} users") },
-                onFailure = { log("DbResult Failure: ${it.message}") }
+                onLoading = { log("⏳ 加载中...") },
+                onSuccess = { log("✅ DbResult 成功: ${it.size}个用户") },
+                onFailure = { log("❌ DbResult 失败: ${it.message}") }
             )
         }
     }
 
     private fun testWithTx() {
         lifecycleScope.launch {
+            log("🔄 开始测试事务...")
             val result = db.safeTransaction {
                 val dao = userDao()
-                dao.insert(User(name = "Tx1", age = 25))
-                dao.insert(User(name = "Tx2", age = 30))
+                dao.insert(User(name = "事务1", age = 25))
+                dao.insert(User(name = "事务2", age = 30))
                 dao.getAll()
             }
-            result.onSuccess { log("Transaction success: ${it.size} users") }
-            result.onFailure { log("Transaction failed: ${it.message}") }
+            result.onSuccess { log("✅ 事务成功: ${it.size}个用户") }
+            result.onFailure { log("❌ 事务失败: ${it.message}") }
         }
     }
 
     private fun testBatchExecute() {
         lifecycleScope.launch {
+            log("🔄 开始测试批量执行...")
             val dao = db.userDao()
             val users = (1..5).map {
-                User(name = "BatchExec-$it", age = (20..30).random())
+                User(name = "批量执行-$it", age = (20..30).random())
             }
             val result = db.batchExecute(users) { user ->
                 dao.insert(user)
             }
             when (result) {
-                is BatchResult.Skipped -> log("BatchExecute success: ${result.successCount}, failed: ${result.failedCount}")
-                is BatchResult.AllOrNothing -> result.result.onSuccess { log("BatchExecute all success: $it") }
-                    .onFailure { log("BatchExecute failed: ${it.message}") }
+                is BatchResult.Skipped -> log("✅ 批量执行成功: 成功${result.successCount}个, 失败${result.failedCount}个")
+                is BatchResult.AllOrNothing -> result.result.onSuccess { log("✅ 批量执行全部成功: $it") }
+                    .onFailure { log("❌ 批量执行失败: ${it.message}") }
             }
         }
     }
 
     private fun testFlatMap() {
         lifecycleScope.launch {
+            log("🔄 开始测试 flatMap...")
             val userResult = dbResultOf { db.userDao().getById(1) }
             val result = userResult.flatMap { user ->
                 DbResult.Success(listOf(user))
             }
-            result.onSuccess { log("flatMap result: ${it.size} users") }
-                .onFailure { log("flatMap failure: ${it.message}") }
+            result.onSuccess { log("✅ flatMap 结果: ${it.size}个用户") }
+                .onFailure { log("❌ flatMap 失败: ${it.message}") }
         }
     }
 
     private fun observeFlow() {
         lifecycleScope.launch {
+            log("🔄 开始观察 Flow...")
             db.userDao().observeAll()
                 .asDbResultWithLoading()
                 .collect { result ->
                     result.fold(
-                        onLoading = { log("[Flow] Loading...") },
-                        onSuccess = { log("[Flow] Received: ${it.size} users") },
-                        onFailure = { log("[Flow] Error: ${it.message}") }
+                        onLoading = { log("[Flow] ⏳ 加载中...") },
+                        onSuccess = { log("[Flow] ✅ 收到: ${it.size}个用户") },
+                        onFailure = { log("[Flow] ❌ 错误: ${it.message}") }
                     )
                 }
         }
