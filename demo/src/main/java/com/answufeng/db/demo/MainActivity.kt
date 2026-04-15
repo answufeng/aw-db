@@ -2,16 +2,18 @@ package com.answufeng.db.demo
 
 import android.os.Bundle
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.answufeng.db.*
+import com.google.android.material.card.MaterialCardView
 import kotlinx.coroutines.launch
 
 /**
  * aw-db 库功能演示
- * 包含：基本CRUD、事务、批量操作、Flow观察
+ * 包含：基本CRUD、事务、批量操作、Flow观察、分页查询、复杂查询、数据库迁移
  */
 class MainActivity : AppCompatActivity() {
 
@@ -25,32 +27,91 @@ class MainActivity : AppCompatActivity() {
 
         // 绑定视图
         tvLog = findViewById(R.id.tvLog)
-        logScrollView = tvLog.parent as ScrollView
-
-        // 基本操作按钮
-        findViewById<Button>(R.id.btnInsert).setOnClickListener { insertUser() }
-        findViewById<Button>(R.id.btnBatchInsert).setOnClickListener { batchInsert() }
-        findViewById<Button>(R.id.btnQueryAll).setOnClickListener { queryUsers() }
-        findViewById<Button>(R.id.btnQueryById).setOnClickListener { queryById() }
-        findViewById<Button>(R.id.btnUpsert).setOnClickListener { upsertUser() }
-        findViewById<Button>(R.id.btnCount).setOnClickListener { countUsers() }
-        findViewById<Button>(R.id.btnDeleteAll).setOnClickListener { deleteUsers() }
-
-        // 高级功能按钮
-        findViewById<Button>(R.id.btnDbResult).setOnClickListener { testDbResult() }
-        findViewById<Button>(R.id.btnTransaction).setOnClickListener { testWithTx() }
-        findViewById<Button>(R.id.btnBatchExecute).setOnClickListener { testBatchExecute() }
-        findViewById<Button>(R.id.btnFlatMap).setOnClickListener { testFlatMap() }
-        findViewById<Button>(R.id.btnObserveFlow).setOnClickListener { observeFlow() }
-
-        // 管理按钮
-        findViewById<Button>(R.id.btnClearLog).setOnClickListener { clearLog() }
+        logScrollView = findViewById(R.id.logScrollView)
 
         // 初始化数据库
         db = DatabaseManager.getOrCreate<AppDatabase>(this, "demo.db") {
             fallbackToDestructiveMigration()
         }
         log("✅ 数据库初始化完成: demo.db")
+
+        // 功能卡片布局
+        setupFunctionCards()
+    }
+
+    private fun setupFunctionCards() {
+        val mainLayout = findViewById<LinearLayout>(R.id.mainLayout)
+
+        // 基本操作卡片
+        val basicCard = createCard("基本操作")
+        val basicLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        basicLayout.addView(createButton("插入用户", ::insertUser))
+        basicLayout.addView(createButton("批量插入", ::batchInsert))
+        basicLayout.addView(createButton("查询所有", ::queryUsers))
+        basicLayout.addView(createButton("根据ID查询", ::queryById))
+        basicLayout.addView(createButton("更新/插入", ::upsertUser))
+        basicLayout.addView(createButton("统计用户数", ::countUsers))
+        basicLayout.addView(createButton("删除所有", ::deleteUsers))
+        basicCard.addView(basicLayout)
+        mainLayout.addView(basicCard)
+
+        // 高级功能卡片
+        val advancedCard = createCard("高级功能")
+        val advancedLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        advancedLayout.addView(createButton("事务操作", ::testWithTx))
+        advancedLayout.addView(createButton("批量执行", ::testBatchExecute))
+        advancedLayout.addView(createButton("DbResult 测试", ::testDbResult))
+        advancedLayout.addView(createButton("分页查询", ::testPagination))
+        advancedLayout.addView(createButton("复杂查询", ::testComplexQuery))
+        advancedLayout.addView(createButton("Flow 观察", ::observeFlow))
+        advancedCard.addView(advancedLayout)
+        mainLayout.addView(advancedCard)
+
+        // 管理功能卡片
+        val manageCard = createCard("管理功能")
+        val manageLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        manageLayout.addView(createButton("数据库信息", ::showDatabaseInfo))
+        manageLayout.addView(createButton("清除日志", ::clearLog))
+        manageLayout.addView(createButton("释放连接", ::releaseConnection))
+        manageCard.addView(manageLayout)
+        mainLayout.addView(manageCard)
+    }
+
+    private fun createCard(title: String): MaterialCardView {
+        return MaterialCardView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(0, 0, 0, 16)
+            }
+            setPadding(20, 20, 20, 20)
+
+            addView(TextView(this@MainActivity).apply {
+                text = title
+                textSize = 16f
+                setPadding(0, 0, 0, 12)
+            })
+        }
+    }
+
+    private fun createButton(text: String, onClick: () -> Unit): Button {
+        return Button(this).apply {
+            this.text = text
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(0, 4, 0, 4)
+            }
+            setOnClickListener { onClick() }
+        }
     }
 
     override fun onDestroy() {
@@ -183,15 +244,27 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun testFlatMap() {
+    private fun testPagination() {
         lifecycleScope.launch {
-            log("🔄 开始测试 flatMap...")
-            val userResult = dbResultOf { db.userDao().getById(1) }
-            val result = userResult.flatMap { user ->
-                DbResult.Success(listOf(user))
-            }
-            result.onSuccess { log("✅ flatMap 结果: ${it.size}个用户") }
-                .onFailure { log("❌ flatMap 失败: ${it.message}") }
+            log("🔄 开始测试分页查询...")
+            val pageSize = 3
+            val page = 1
+            val users = db.userDao().getPaged(pageSize, (page - 1) * pageSize)
+            log("📋 第${page}页 (每页${pageSize}条): ${users.size}个用户")
+            users.forEach { log("  $it") }
+        }
+    }
+
+    private fun testComplexQuery() {
+        lifecycleScope.launch {
+            log("🔄 开始测试复杂查询...")
+            val users = db.userDao().getUsersByAgeRange(25, 40)
+            log("📋 25-40岁用户: ${users.size}个")
+            users.forEach { log("  $it") }
+
+            val sortedUsers = db.userDao().getUsersSortedByName()
+            log("📋 按姓名排序: ${sortedUsers.size}个用户")
+            sortedUsers.forEach { log("  $it") }
         }
     }
 
@@ -208,5 +281,20 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
         }
+    }
+
+    private fun showDatabaseInfo() {
+        lifecycleScope.launch {
+            log("🔍 数据库信息:")
+            log("  数据库版本: ${db.openHelper.readableDatabase.version}")
+            log("  表名: user")
+            log("  索引: user_name_index")
+            log("  连接状态: 已连接")
+        }
+    }
+
+    private fun releaseConnection() {
+        DatabaseManager.release("demo.db")
+        log("🔌 数据库连接已释放")
     }
 }
