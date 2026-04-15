@@ -1,191 +1,298 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FAFAFA"
-    android:fillViewport="true">
+    android:background="?android:attr/colorBackground">
 
-    <LinearLayout
+    <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:background="@android:color/transparent"
+        android:elevation="0dp">
 
-        <!-- 标题 -->
-        <TextView
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="🗃️ aw-db 数据库演示"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:gravity="center"
-            android:layout_marginBottom="4dp" />
+            android:layout_height="?attr/actionBarSize"
+            android:background="?android:attr/colorPrimary"
+            app:title="🗃️ aw-db 数据库库"
+            app:titleTextColor="@android:color/white"
+            app:navigationIcon="@drawable/ic_database" />
 
-        <!-- 副标题 -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Room数据库封装 · CRUD操作 · 事务管理 · Flow观察"
-            android:textSize="13sp"
-            android:textColor="#999999"
-            android:gravity="center"
-            android:layout_marginBottom="16dp" />
+    </com.google.android.material.appbar.AppBarLayout>
 
-        <!-- 日志区域 -->
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:layout_marginBottom="16dp">
+            android:padding="16dp">
 
-            <TextView
+            <!-- 基本操作卡片 -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="📋 操作日志"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:textColor="#FFFFFF"
-                android:background="#2196F3"
-                android:padding="8dp" />
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp">
 
-            <ScrollView
-                android:layout_width="match_parent"
-                android:layout_height="160dp"
-                android:background="#FFFFFF"
-                android:padding="8dp">
-
-                <TextView
-                    android:id="@+id/tvLog"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textSize="13sp"
-                    android:textColor="#333333" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
-            </ScrollView>
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="📝 基本操作"
+                        android:textColor="#4CAF50"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:drawablePadding="8dp"
+                        android:drawableStart="@drawable/ic_crud"
+                        android:layout_marginBottom="12dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="基础的CRUD操作，支持插入、查询、更新、删除等数据库基本功能"
+                        android:textColor="#666666"
+                        android:textSize="14sp"
+                        android:layout_marginBottom="16dp"
+                        android:lineSpacingExtra="4dp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <Button
+                            android:id="@+id/btnInsert"
+                            style="@style/MaterialButton.Outlined"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="插入用户"
+                            android:layout_marginEnd="8dp" />
+
+                        <Button
+                            android:id="@+id/btnBatchInsert"
+                            style="@style/MaterialButton.Outlined"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="批量插入" />
+
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="8dp">
+
+                        <Button
+                            android:id="@+id/btnQueryAll"
+                            style="@style/MaterialButton.Outlined"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="查询所有"
+                            android:layout_marginEnd="8dp" />
+
+                        <Button
+                            android:id="@+id/btnQueryById"
+                            style="@style/MaterialButton.Outlined"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="ID查询" />
+
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="8dp">
+
+                        <Button
+                            android:id="@+id/btnUpsert"
+                            style="@style/MaterialButton.Outlined"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="更新/插入"
+                            android:layout_marginEnd="8dp" />
+
+                        <Button
+                            android:id="@+id/btnCount"
+                            style="@style/MaterialButton.Outlined"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="统计数量" />
+
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/btnDeleteAll"
+                        style="@style/MaterialButton.Outlined"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:text="删除所有数据"
+                        android:layout_marginTop="8dp" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 高级功能卡片 -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="⚡ 高级功能"
+                        android:textColor="#4CAF50"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:drawablePadding="8dp"
+                        android:drawableStart="@drawable/ic_advanced"
+                        android:layout_marginBottom="12dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="事务管理、批量执行、DbResult包装、Flow观察等高级数据库功能"
+                        android:textColor="#666666"
+                        android:textSize="14sp"
+                        android:layout_marginBottom="16dp"
+                        android:lineSpacingExtra="4dp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <Button
+                            android:id="@+id/btnDbResult"
+                            style="@style/MaterialButton.Outlined"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="DbResult"
+                            android:layout_marginEnd="8dp" />
+
+                        <Button
+                            android:id="@+id/btnTransaction"
+                            style="@style/MaterialButton.Outlined"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="事务操作" />
+
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="8dp">
+
+                        <Button
+                            android:id="@+id/btnBatchExecute"
+                            style="@style/MaterialButton.Outlined"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="批量执行"
+                            android:layout_marginEnd="8dp" />
+
+                        <Button
+                            android:id="@+id/btnObserveFlow"
+                            style="@style/MaterialButton.Outlined"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="Flow观察" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 操作日志卡片 -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="📋 操作日志"
+                        android:textColor="#4CAF50"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:drawablePadding="8dp"
+                        android:drawableStart="@drawable/ic_logs"
+                        android:layout_marginBottom="12dp" />
+
+                    <ScrollView
+                        android:layout_width="match_parent"
+                        android:layout_height="200dp"
+                        android:background="#F8F9FA"
+                        android:padding="12dp">
+
+                        <TextView
+                            android:id="@+id/tvLog"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="操作日志将显示在这里...\n点击上方按钮开始测试数据库功能"
+                            android:textColor="#333333"
+                            android:textSize="13sp"
+                            android:fontFamily="monospace"
+                            android:lineSpacingExtra="4dp" />
+
+                    </ScrollView>
+
+                    <Button
+                        android:id="@+id/btnClearLog"
+                        style="@style/MaterialButton.Text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="48dp"
+                        android:layout_gravity="end"
+                        android:text="清除日志"
+                        android:layout_marginTop="12dp" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
         </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
 
-        <!-- 基本操作分类 -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="📋 基本操作"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:textColor="#424242"
-            android:layout_marginBottom="8dp" />
-
-        <Button
-            android:id="@+id/btnInsert"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="插入用户"
-            android:layout_marginBottom="8dp" />
-
-        <Button
-            android:id="@+id/btnBatchInsert"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="批量插入(5个)"
-            android:layout_marginBottom="8dp" />
-
-        <Button
-            android:id="@+id/btnQueryAll"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="查询所有用户"
-            android:layout_marginBottom="8dp" />
-
-        <Button
-            android:id="@+id/btnQueryById"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="根据ID查询(ID=1)"
-            android:layout_marginBottom="8dp" />
-
-        <Button
-            android:id="@+id/btnUpsert"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="更新/插入用户"
-            android:layout_marginBottom="8dp" />
-
-        <Button
-            android:id="@+id/btnCount"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="统计用户数"
-            android:layout_marginBottom="8dp" />
-
-        <Button
-            android:id="@+id/btnDeleteAll"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="删除所有用户"
-            android:layout_marginBottom="16dp" />
-
-        <!-- 高级功能分类 -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="⚡ 高级功能"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:textColor="#424242"
-            android:layout_marginBottom="8dp" />
-
-        <Button
-            android:id="@+id/btnDbResult"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="测试 DbResult 包装"
-            android:layout_marginBottom="8dp" />
-
-        <Button
-            android:id="@+id/btnTransaction"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="测试 事务操作"
-            android:layout_marginBottom="8dp" />
-
-        <Button
-            android:id="@+id/btnBatchExecute"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="测试 批量执行"
-            android:layout_marginBottom="8dp" />
-
-        <Button
-            android:id="@+id/btnFlatMap"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="测试 flatMap 转换"
-            android:layout_marginBottom="8dp" />
-
-        <Button
-            android:id="@+id/btnObserveFlow"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="观察 Flow 数据变化"
-            android:layout_marginBottom="16dp" />
-
-        <!-- 管理分类 -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="🔧 管理"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:textColor="#424242"
-            android:layout_marginBottom="8dp" />
-
-        <Button
-            android:id="@+id/btnClearLog"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="🗑️ 清除日志"
-            android:layout_marginBottom="8dp" />
-
-    </LinearLayout>
-
-</ScrollView>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
