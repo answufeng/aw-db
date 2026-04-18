@@ -7,6 +7,9 @@ import androidx.room.migration.Migration
 import androidx.room.migration.AutoMigrationSpec
 import java.util.concurrent.Executor
 
+@DslMarker
+annotation class AwDbDsl
+
 /**
  * Room 数据库 DSL 构建器，简化 [Room.databaseBuilder] 的配置流程。
  *
@@ -83,6 +86,7 @@ object AwDatabase {
  * }
  * ```
  */
+@AwDbDsl
 class DatabaseConfig {
 
     private val migrations = mutableListOf<Migration>()
