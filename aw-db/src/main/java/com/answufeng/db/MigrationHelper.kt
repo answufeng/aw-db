@@ -82,3 +82,30 @@ fun onOpenCallback(block: SupportSQLiteDatabase.() -> Unit): RoomDatabase.Callba
         }
     }
 }
+
+/**
+ * 数据库销毁式迁移回调（Room 2.4+）。
+ *
+ * 当 Room 执行销毁式迁移（fallbackToDestructiveMigration）时触发，
+ * 可用于记录日志或重新填充默认数据。
+ *
+ * ```kotlin
+ * val db = AwDatabase.build<AppDatabase>(context, "app.db") {
+ *     fallbackToDestructiveMigration()
+ *     addCallback(onDestructiveMigrationCallback {
+ *         Log.w("DB", "数据库被销毁重建")
+ *     })
+ * }
+ * ```
+ *
+ * @param block 销毁式迁移时执行的操作
+ * @return RoomDatabase.Callback
+ */
+fun onDestructiveMigrationCallback(block: () -> Unit): RoomDatabase.Callback {
+    return object : RoomDatabase.Callback() {
+        override fun onDestructiveMigration(db: SupportSQLiteDatabase) {
+            super.onDestructiveMigration(db)
+            block()
+        }
+    }
+}

@@ -162,6 +162,9 @@ sealed class BatchResult<out T> {
  * **注意**：SKIP 策略下，SQLite 约束冲突（如 UNIQUE 违反）会被 catch 并跳过，
  * 但其他严重错误（如磁盘 I/O 错误）可能导致当前事务无法继续。
  * 如果需要严格的原子性保证，请使用 FAIL_FAST 策略。
+ *
+ * SKIP 策略适合少量数据或需要精细错误处理的场景；对于大批量数据，
+ * 推荐使用 [BaseDao.insertAll] / [BaseDao.insertOrIgnoreAll] 等 Room 原生批量操作以获得更好的性能。
  */
 suspend fun <T : RoomDatabase, E> T.batchExecute(
     items: List<E>,
@@ -173,10 +176,10 @@ suspend fun <T : RoomDatabase, E> T.batchExecute(
         if (batchSize > 0 && items.size > batchSize) {
             var totalSuccess = 0
             val allFailures = mutableListOf<IndexedValue<Throwable>>()
-            items.chunked(batchSize).forEach { chunk ->
+            items.chunked(batchSize).forEachIndexed { chunkIndex, chunk ->
                 var chunkSuccess = 0
                 val chunkFailures = mutableListOf<IndexedValue<Throwable>>()
-                val chunkOffset = totalSuccess + chunkFailures.size
+                val chunkOffset = chunkIndex * batchSize
                 withTransaction {
                     chunk.forEachIndexed { index, item ->
                         try {

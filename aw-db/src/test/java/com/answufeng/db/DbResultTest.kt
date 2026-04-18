@@ -81,19 +81,31 @@ class DbResultTest {
 
     @Test
     fun `getOrElse returns data on Success`() {
-        assertEquals("data", DbResult.Success("data").getOrElse("fallback"))
+        assertEquals("data", DbResult.Success("data").getOrElse { "fallback" })
     }
 
     @Test
     fun `getOrElse returns fallback on Failure`() {
         val result: DbResult<String> = DbResult.Failure(RuntimeException())
-        assertEquals("fallback", result.getOrElse("fallback"))
+        assertEquals("fallback", result.getOrElse { "fallback" })
     }
 
     @Test
     fun `getOrElse returns fallback on Loading`() {
         val result: DbResult<String> = DbResult.Loading
-        assertEquals("fallback", result.getOrElse("fallback"))
+        assertEquals("fallback", result.getOrElse { "fallback" })
+    }
+
+    @Test
+    fun `getOrElse lazy evaluation`() {
+        var evaluated = false
+        val result: DbResult<String> = DbResult.Failure(RuntimeException())
+        result.getOrElse { evaluated = true; "fallback" }
+        assertTrue(evaluated)
+
+        evaluated = false
+        DbResult.Success("data").getOrElse { evaluated = true; "fallback" }
+        assertFalse(evaluated)
     }
 
     @Test

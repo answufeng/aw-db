@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
+import androidx.room.migration.AutoMigrationSpec
 import java.util.concurrent.Executor
 
 /**
@@ -85,6 +86,7 @@ object AwDatabase {
 class DatabaseConfig {
 
     private val migrations = mutableListOf<Migration>()
+    private val autoMigrationSpecs = mutableListOf<AutoMigrationSpec>()
     private val callbacks = mutableListOf<RoomDatabase.Callback>()
     private var destructiveMigration = false
     private var destructiveMigrationFrom: IntArray? = null
@@ -99,6 +101,11 @@ class DatabaseConfig {
     /** 添加数据库迁移。 */
     fun addMigrations(vararg migration: Migration) {
         migrations.addAll(migration)
+    }
+
+    /** 添加自动迁移规范（Room 2.4+ 的 @AutoMigration 所需）。 */
+    fun addAutoMigrationSpec(vararg spec: AutoMigrationSpec) {
+        autoMigrationSpecs.addAll(spec)
     }
 
     /** 添加数据库回调（如 onCreate、onOpen）。 */
@@ -161,6 +168,7 @@ class DatabaseConfig {
         if (migrations.isNotEmpty()) {
             builder.addMigrations(*migrations.toTypedArray())
         }
+        autoMigrationSpecs.forEach { builder.addAutoMigrationSpec(it) }
         callbacks.forEach { builder.addCallback(it) }
         if (destructiveMigration) {
             builder.fallbackToDestructiveMigration()

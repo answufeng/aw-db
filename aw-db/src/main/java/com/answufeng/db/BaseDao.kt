@@ -28,6 +28,9 @@ import androidx.room.*
  * 批量操作（insertAll / updateAll / deleteAll / upsertAll）已标注 [@Transaction][Transaction]，
  * 确保在单个数据库事务中执行，避免中途崩溃导致部分写入。
  *
+ * **注意**：[insert] 使用 [OnConflictStrategy.REPLACE]，主键冲突时会先删除旧行再插入新行，
+ * 这可能触发外键的 CASCADE 删除。如果需要保留旧行，请使用 [insertOrIgnore] 或 [upsert]。
+ *
  * @param T 实体类型，必须标注 [@Entity][Entity]
  */
 abstract class BaseDao<T> {

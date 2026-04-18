@@ -62,6 +62,23 @@ object DatabaseManager {
     }
 
     /**
+     * 获取或创建数据库实例，使用类名作为数据库名。
+     *
+     * 适用于只有一个数据库的简单场景，省去手动指定名称的步骤。
+     *
+     * @param T 数据库类型，必须继承 [RoomDatabase]
+     * @param context 任意 Context（内部自动取 applicationContext）
+     * @param block 可选的配置 DSL
+     * @return 数据库实例
+     */
+    inline fun <reified T : RoomDatabase> getOrCreate(
+        context: Context,
+        noinline block: DatabaseConfig.() -> Unit = {}
+    ): T {
+        return getOrCreate(context, T::class.java.simpleName, block)
+    }
+
+    /**
      * 释放数据库引用。
      *
      * 引用计数递减，归零时自动关闭数据库并移除实例。
@@ -92,13 +109,32 @@ object DatabaseManager {
     }
 
     /**
+     * 获取已存在的数据库实例，不创建新实例。
+     *
+     * 适用于只想使用已初始化的数据库而不想触发创建的场景。
+     * 如果数据库尚未初始化，返回 null。
+     *
+     * @param T 数据库类型，必须继承 [RoomDatabase]
+     * @param name 数据库文件名
+     * @return 数据库实例，如果未初始化则返回 null
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun <T : RoomDatabase> getOrNull(name: String): T? {
+        synchronized(lock) {
+            return instances[name]?.database as? T
+        }
+    }
+
+    /**
      * 检查指定名称的数据库是否正在被管理。
      *
      * @param name 数据库文件名
      * @return 是否存在该数据库的管理实例
      */
     fun isManaged(name: String): Boolean {
-        return instances.containsKey(name)
+        synchronized(lock) {
+            return instances.containsKey(name)
+        }
     }
 
     /**
@@ -110,7 +146,9 @@ object DatabaseManager {
      * @return 引用计数，如果数据库未被管理则返回 0
      */
     fun getReferenceCount(name: String): Int {
-        return instances[name]?.refCount?.get() ?: 0
+        synchronized(lock) {
+            return instances[name]?.refCount?.get() ?: 0
+        }
     }
 
     @PublishedApi

@@ -25,4 +25,7 @@ abstract class UserDao : BaseDao<User>() {
 
     @androidx.room.Query("DELETE FROM User")
     abstract suspend fun deleteAll()
+
+    @androidx.room.Query("SELECT * FROM User ORDER BY id ASC LIMIT :limit OFFSET :offset")
+    abstract suspend fun getPage(limit: Int, offset: Int): List<User>
 }

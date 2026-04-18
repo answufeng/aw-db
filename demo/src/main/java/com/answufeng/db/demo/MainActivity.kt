@@ -9,6 +9,7 @@ import androidx.lifecycle.lifecycleScope
 import com.answufeng.db.*
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -48,6 +49,9 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnBatchExecute).setOnClickListener { testBatchExecute() }
         findViewById<Button>(R.id.btnObserveFlow).setOnClickListener { observeFlow() }
         findViewById<Button>(R.id.btnDebugHelper).setOnClickListener { testDebugHelper() }
+        findViewById<Button>(R.id.btnPagedResult).setOnClickListener { testPagedResult() }
+        findViewById<Button>(R.id.btnBackup).setOnClickListener { testBackup() }
+        findViewById<Button>(R.id.btnGetOrNull).setOnClickListener { testGetOrNull() }
         findViewById<Button>(R.id.btnClearLog).setOnClickListener { clearLog() }
     }
 
@@ -74,7 +78,8 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             log("开始插入用户...")
             val dao = db.userDao()
-            val user = User(name = "用户-${System.currentTimeMillis() % 1000}", age = (20..60).random())
+            val tags = listOf("tag-${(1..10).random()}", "tag-${(1..10).random()}")
+            val user = User(name = "用户-${System.currentTimeMillis() % 1000}", age = (20..60).random(), tags = tags)
             val id = dao.insert(user)
             log("插入成功: $user, ID=$id")
         }
@@ -85,7 +90,7 @@ class MainActivity : AppCompatActivity() {
             log("开始批量插入...")
             val dao = db.userDao()
             val users = (1..5).map {
-                User(name = "批量-$it", age = (20..30).random())
+                User(name = "批量-$it", age = (20..30).random(), tags = listOf("batch-$it"))
             }
             val ids = dao.insertAll(users)
             log("批量插入成功: ${ids.size}个用户, IDs=$ids")
@@ -190,6 +195,10 @@ class MainActivity : AppCompatActivity() {
                 onSuccess = { log("DbResult 成功: ${it.size}个用户") },
                 onFailure = { log("DbResult 失败: ${it.message}") }
             )
+
+            val lazyResult: DbResult<String> = DbResult.Failure(RuntimeException("test"))
+            val recovered = lazyResult.getOrElse { "默认值（惰性求值）" }
+            log("getOrElse 惰性求值: $recovered")
         }
     }
 
@@ -198,8 +207,8 @@ class MainActivity : AppCompatActivity() {
             log("开始测试事务...")
             val result = db.safeTransaction {
                 val dao = userDao()
-                dao.insert(User(name = "事务1", age = 25))
-                dao.insert(User(name = "事务2", age = 30))
+                dao.insert(User(name = "事务1", age = 25, tags = listOf("tx")))
+                dao.insert(User(name = "事务2", age = 30, tags = listOf("tx")))
                 dao.getAll()
             }
             result.onSuccess { log("事务成功: ${it.size}个用户") }
@@ -263,5 +272,47 @@ class MainActivity : AppCompatActivity() {
             log("引用计数: ${DatabaseManager.getReferenceCount("demo.db")}")
             log("是否被管理: ${DatabaseManager.isManaged("demo.db")}")
         }
+    }
+
+    private fun testPagedResult() {
+        lifecycleScope.launch {
+            log("开始测试 PagedResult 手动分页...")
+            val dao = db.userDao()
+            val pageSize = 3
+            val page = 0
+            val items = dao.getPage(pageSize, page * pageSize)
+            val total = dao.count()
+            val result = items.toPagedResult(page, pageSize, total)
+            log("分页结果: 第${result.page}页, ${result.items.size}条/页, 总共${result.total}条, hasMore=${result.hasMore}, totalPages=${result.totalPages}")
+            result.items.forEach { log("  $it") }
+        }
+    }
+
+    private fun testBackup() {
+        lifecycleScope.launch {
+            log("开始测试数据库备份...")
+            try {
+                val backupDir = File(getExternalFilesDir(null), "backup")
+                val backupFile = File(backupDir, "demo_backup.db")
+                db.backupTo(backupFile)
+                log("备份成功: ${backupFile.absolutePath} (${backupFile.length()} bytes)")
+            } catch (e: Exception) {
+                log("备份失败: ${e.message}")
+            }
+        }
+    }
+
+    private fun testGetOrNull() {
+        val existing = DatabaseManager.getOrNull<AppDatabase>("demo.db")
+        log("getOrNull('demo.db'): ${existing != null}")
+
+        val notExisting = DatabaseManager.getOrNull<AppDatabase>("nonexistent.db")
+        log("getOrNull('nonexistent.db'): ${notExisting != null}")
+
+        val defaultName = DatabaseManager.getOrCreate<AppDatabase>(this) {
+            fallbackToDestructiveMigration()
+        }
+        log("getOrCreate 默认名称: ${AppDatabase::class.java.simpleName}")
+        DatabaseManager.release(AppDatabase::class.java.simpleName)
     }
 }

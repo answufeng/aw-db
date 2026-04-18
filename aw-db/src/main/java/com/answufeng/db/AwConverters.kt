@@ -26,10 +26,14 @@ import java.util.Date
  * - `ByteArray` ↔ `String`（Base64）
  *
  * JSON 解析失败时抛出 [IllegalArgumentException]，确保数据损坏可被感知。
+ *
+ * JSON 配置说明：
+ * - `ignoreUnknownKeys = true`：当数据库 schema 演进新增字段后，旧版本读取时忽略未知字段，避免反序列化失败。
+ *   如果需要严格模式（任何未知字段都报错），请使用 [create] 工厂方法创建自定义实例。
  */
 object AwConverters {
 
-    internal val json = Json { ignoreUnknownKeys = true; coerceInputValues = true }
+    internal val json = Json { ignoreUnknownKeys = true }
 
     @TypeConverter
     fun fromTimestamp(value: Long?): Date? = value?.let { Date(it) }
