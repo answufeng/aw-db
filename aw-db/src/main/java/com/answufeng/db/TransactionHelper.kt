@@ -63,17 +63,6 @@ suspend fun <T : RoomDatabase, R> T.withTx(block: suspend T.() -> R): R {
 }
 
 /**
- * @suppress 保留旧 API 兼容，建议迁移到 [withTx]。
- */
-@Deprecated(
-    message = "Use withTx instead to avoid naming conflict with RoomDatabase.runInTransaction",
-    replaceWith = ReplaceWith("withTx(block)")
-)
-suspend fun <T : RoomDatabase, R> T.runInTransaction(block: suspend T.() -> R): R {
-    return withTransaction { block() }
-}
-
-/**
  * 安全执行数据库事务，自动捕获异常并包装为 [Result]。
  *
  * ```kotlin
@@ -166,28 +155,57 @@ sealed class BatchResult<out T> {
  * @param E 数据元素类型
  * @param items 要处理的数据列表
  * @param strategy 失败策略，默认 [BatchFailureStrategy.SKIP]
+ * @param batchSize 分批大小，默认 0 表示不分批。设置大于 0 时，每 N 条提交一次事务，避免长事务导致 ANR
  * @param action 对每个元素执行的操作
  * @return [BatchResult] 类型安全的批量执行结果
+ *
+ * **注意**：SKIP 策略下，SQLite 约束冲突（如 UNIQUE 违反）会被 catch 并跳过，
+ * 但其他严重错误（如磁盘 I/O 错误）可能导致当前事务无法继续。
+ * 如果需要严格的原子性保证，请使用 FAIL_FAST 策略。
  */
 suspend fun <T : RoomDatabase, E> T.batchExecute(
     items: List<E>,
     strategy: BatchFailureStrategy = BatchFailureStrategy.SKIP,
+    batchSize: Int = 0,
     action: suspend (E) -> Unit
 ): BatchResult<E> = when (strategy) {
     BatchFailureStrategy.SKIP -> {
-        var successCount = 0
-        val failures = mutableListOf<IndexedValue<Throwable>>()
-        withTransaction {
-            items.forEachIndexed { index, item ->
-                try {
-                    action(item)
-                    successCount++
-                } catch (e: Exception) {
-                    failures.add(IndexedValue(index, e))
+        if (batchSize > 0 && items.size > batchSize) {
+            var totalSuccess = 0
+            val allFailures = mutableListOf<IndexedValue<Throwable>>()
+            items.chunked(batchSize).forEach { chunk ->
+                var chunkSuccess = 0
+                val chunkFailures = mutableListOf<IndexedValue<Throwable>>()
+                val chunkOffset = totalSuccess + chunkFailures.size
+                withTransaction {
+                    chunk.forEachIndexed { index, item ->
+                        try {
+                            action(item)
+                            chunkSuccess++
+                        } catch (e: Exception) {
+                            chunkFailures.add(IndexedValue(chunkOffset + index, e))
+                        }
+                    }
+                }
+                totalSuccess += chunkSuccess
+                allFailures.addAll(chunkFailures)
+            }
+            BatchResult.Skipped(totalSuccess, items.size - totalSuccess, allFailures)
+        } else {
+            var successCount = 0
+            val failures = mutableListOf<IndexedValue<Throwable>>()
+            withTransaction {
+                items.forEachIndexed { index, item ->
+                    try {
+                        action(item)
+                        successCount++
+                    } catch (e: Exception) {
+                        failures.add(IndexedValue(index, e))
+                    }
                 }
             }
+            BatchResult.Skipped(successCount, items.size - successCount, failures)
         }
-        BatchResult.Skipped(successCount, items.size - successCount, failures)
     }
 
     BatchFailureStrategy.FAIL_FAST -> {

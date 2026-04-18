@@ -33,7 +33,6 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- 基本操作卡片 -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -141,18 +140,59 @@
 
                     </LinearLayout>
 
-                    <Button
-                        android:id="@+id/btnDeleteAll"
-                        style="@style/MaterialButton.Outlined"
+                    <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:text="删除所有数据"
-                        android:layout_marginTop="8dp" />
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="8dp">
+
+                        <Button
+                            android:id="@+id/btnInsertOrIgnore"
+                            style="@style/MaterialButton.Outlined"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="忽略插入"
+                            android:layout_marginEnd="8dp" />
+
+                        <Button
+                            android:id="@+id/btnUpdate"
+                            style="@style/MaterialButton.Outlined"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="更新单条" />
+
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="8dp">
+
+                        <Button
+                            android:id="@+id/btnDelete"
+                            style="@style/MaterialButton.Outlined"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="删除单条"
+                            android:layout_marginEnd="8dp" />
+
+                        <Button
+                            android:id="@+id/btnDeleteAll"
+                            style="@style/MaterialButton.Outlined"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="删除所有" />
+
+                    </LinearLayout>
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- 高级功能卡片 -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -180,7 +220,7 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="事务管理、批量执行、DbResult包装、Flow观察等高级数据库功能"
+                        android:text="事务管理、批量执行、DbResult包装、Flow观察、调试工具等高级数据库功能"
                         android:textColor="#666666"
                         android:textSize="14sp"
                         android:layout_marginBottom="16dp"
@@ -235,10 +275,17 @@
 
                     </LinearLayout>
 
+                    <Button
+                        android:id="@+id/btnDebugHelper"
+                        style="@style/MaterialButton.Outlined"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:text="调试工具"
+                        android:layout_marginTop="8dp" />
+
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- 操作日志卡片 -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

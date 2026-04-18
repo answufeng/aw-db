@@ -42,6 +42,10 @@ abstract class BaseDao<T> {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     abstract suspend fun insertOrIgnore(entity: T): Long
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    @Transaction
+    abstract suspend fun insertOrIgnoreAll(entities: List<T>): List<Long>
+
     @Update
     abstract suspend fun update(entity: T): Int
 

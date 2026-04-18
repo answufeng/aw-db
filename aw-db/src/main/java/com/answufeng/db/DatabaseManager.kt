@@ -2,7 +2,6 @@ package com.answufeng.db
 
 import android.content.Context
 import androidx.room.RoomDatabase
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -30,7 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger
 object DatabaseManager {
 
     @PublishedApi
-    internal val instances = ConcurrentHashMap<String, ManagedDatabase<*>>()
+    internal val instances = mutableMapOf<String, ManagedDatabase<*>>()
     @PublishedApi
     internal val lock = Any()
 
@@ -51,15 +50,15 @@ object DatabaseManager {
         name: String,
         noinline block: DatabaseConfig.() -> Unit = {}
     ): T {
-        val managed = synchronized(lock) {
-            instances.getOrPut(name) {
+        synchronized(lock) {
+            val managed = instances.getOrPut(name) {
                 val database = AwDatabase.build<T>(context, name, block)
                 ManagedDatabase(database)
             }
+            managed.refCount.incrementAndGet()
+            @Suppress("UNCHECKED_CAST")
+            return managed.database as T
         }
-        managed.refCount.incrementAndGet()
-        @Suppress("UNCHECKED_CAST")
-        return managed.database as T
     }
 
     /**
@@ -90,6 +89,28 @@ object DatabaseManager {
             instances.values.forEach { it.database.close() }
             instances.clear()
         }
+    }
+
+    /**
+     * 检查指定名称的数据库是否正在被管理。
+     *
+     * @param name 数据库文件名
+     * @return 是否存在该数据库的管理实例
+     */
+    fun isManaged(name: String): Boolean {
+        return instances.containsKey(name)
+    }
+
+    /**
+     * 获取指定数据库的当前引用计数。
+     *
+     * 主要用于调试，生产代码不应依赖此值做逻辑判断（并发环境下值可能随时变化）。
+     *
+     * @param name 数据库文件名
+     * @return 引用计数，如果数据库未被管理则返回 0
+     */
+    fun getReferenceCount(name: String): Int {
+        return instances[name]?.refCount?.get() ?: 0
     }
 
     @PublishedApi

@@ -158,8 +158,8 @@ val db = AwDatabase.build<AppDatabase>(context, "app.db") {
     // 自定义事务线程池
     setTransactionExecutor(Executors.newSingleThreadExecutor())
 
-    // 单进程应用可关闭多实例失效通知以减少开销
-    enableMultiInstanceInvalidation(false)
+    // 多进程应用启用多实例失效通知（单进程无需启用）
+    enableMultiInstanceInvalidation()
 
     // ⚠️ 仅用于测试！生产环境会导致 ANR
     // allowMainThreadQueries()
@@ -175,6 +175,7 @@ val db = AwDatabase.build<AppDatabase>(context, "app.db") {
 | `insert(entity)` | 插入，冲突替换 | 行 ID |
 | `insertAll(entities)` | 批量插入，冲突替换（`@Transaction`） | 行 ID 列表 |
 | `insertOrIgnore(entity)` | 插入，冲突忽略 | 行 ID（冲突返回 -1） |
+| `insertOrIgnoreAll(entities)` | 批量插入，冲突忽略（`@Transaction`） | 行 ID 列表 |
 | `update(entity)` | 更新 | 受影响行数 |
 | `updateAll(entities)` | 批量更新（`@Transaction`） | 受影响行数 |
 | `delete(entity)` | 删除 | 受影响行数 |
@@ -210,7 +211,7 @@ result.isLoading   // 是否加载中
 result.getOrNull()           // 成功返回数据，否则 null
 result.getOrDefault(default) // 成功返回数据，否则返回默认值
 result.getOrElse(default)    // 同 getOrDefault
-result.getOrThrow()          // 成功返回数据，失败抛异常，加载中返回 null
+result.getOrThrow()          // 成功返回数据，失败/加载中抛异常
 ```
 
 #### 链式回调
@@ -402,17 +403,32 @@ abstract class AppDatabase : RoomDatabase()
 | `LocalDate` ↔ `String` | ISO 格式 | java.time，需脱糖支持 |
 | `List<String>` ↔ `String` | JSON 数组 | 使用 kotlinx.serialization |
 | `List<Long>` ↔ `String` | JSON 数组 | 使用 kotlinx.serialization |
+| `List<Int>` ↔ `String` | JSON 数组 | 使用 kotlinx.serialization |
 | `Set<String>` ↔ `String` | JSON 数组 | 使用 kotlinx.serialization |
 | `Set<Long>` ↔ `String` | JSON 数组 | 使用 kotlinx.serialization |
+| `Set<Int>` ↔ `String` | JSON 数组 | 使用 kotlinx.serialization |
 | `Map<String, String>` ↔ `String` | JSON 对象 | 使用 kotlinx.serialization |
 | `Map<String, Long>` ↔ `String` | JSON 对象 | 使用 kotlinx.serialization |
+| `Map<String, Int>` ↔ `String` | JSON 对象 | 使用 kotlinx.serialization |
 | `Boolean` ↔ `Int` | 0/1 | SQLite 原生不支持 Boolean |
 | `ByteArray` ↔ `String` | Base64 | 适用于二进制数据 |
-| `Enum` ↔ `String` | 枚举名称 | 泛型支持 |
+| `Enum` ↔ `String` | 枚举名称 | 继承 `EnumConverter` |
 
 > **注意**：JSON 解析失败时会抛出 `IllegalArgumentException`，Room 会将异常传播到查询调用方。这确保了数据损坏可被感知，而非静默返回空集合。
 
 > **java.time 脱糖**：使用 `Instant`/`LocalDateTime`/`LocalDate` 转换器需要启用 `coreLibraryDesugaring`。
+
+#### Enum 转换器
+
+由于 Room 的 TypeConverter 不支持泛型（运行时类型擦除），需要为每个 Enum 类型创建具体的转换器子类：
+
+```kotlin
+class StatusConverter : EnumConverter<Status>(Status::class.java)
+
+@Database(entities = [...], version = 1)
+@TypeConverters(AwConverters::class, StatusConverter::class)
+abstract class AppDatabase : RoomDatabase()
+```
 
 ### Paging 3 集成
 
@@ -425,17 +441,19 @@ abstract class UserDao : BaseDao<User>() {
     abstract fun pagingSource(): PagingSource<Int, User>
 }
 
-// 基本分页 Flow
-val pagingFlow = userDao.pagingSource().asPagingFlow(pageSize = 20)
+// 基本分页 Flow（使用方法引用作为 factory，确保刷新时创建新 PagingSource）
+val pagingFlow = userDao::pagingSource.asPagingFlow(pageSize = 20)
 
 // 包装为 DbResult 的分页 Flow
-val dbResultPagingFlow = userDao.pagingSource().asDbResultPagingFlow(pageSize = 20)
+val dbResultPagingFlow = userDao::pagingSource.asDbResultPagingFlow(pageSize = 20)
 
 // 转换分页数据
 val mappedFlow = dbResultPagingFlow.mapResult { user ->
     UserUiModel(user)
 }
 ```
+
+> **重要**：`asPagingFlow()` 扩展在 `() -> PagingSource<Int, T>`（工厂函数）上调用，而非直接在 `PagingSource` 上调用。使用方法引用（如 `userDao::pagingSource`）确保 Paging 刷新时创建新的 `PagingSource` 实例。
 
 ### PagedResult — 手动分页
 
@@ -501,7 +519,7 @@ val tables = db.tableList()
 // 获取表行数（表名仅允许字母数字和下划线）
 val count = db.rowCount("users")
 
-// 获取表结构
+// 获取表结构（返回 TableColumnInfo 列表）
 val columns = db.tableSchema("users")
 columns.forEach { col ->
     println("${col.name} ${col.type} ${if (col.notNull) "NOT NULL" else ""} ${col.defaultValue ?: ""}")
@@ -578,7 +596,7 @@ userDao.observeAll()
 
 ```kotlin
 // ✅ 推荐：使用 Paging 3（数据库级分页，高效）
-userDao.pagingSource().asPagingFlow()
+userDao::pagingSource.asPagingFlow()
 
 // ❌ 不推荐：内存分页（已标记 @Deprecated）
 userDao.observeAll().paginate(page = 0, pageSize = 20)

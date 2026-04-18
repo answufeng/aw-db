@@ -31,10 +31,10 @@ sealed class DbResult<out T> {
         else -> default
     }
 
-    fun getOrThrow(): T? = when (this) {
+    fun getOrThrow(): T = when (this) {
         is Success -> data
         is Failure -> throw error
-        is Loading -> null
+        is Loading -> throw IllegalStateException("DbResult is still Loading")
     }
 
     inline fun onSuccess(action: (T) -> Unit): DbResult<T> {
@@ -114,6 +114,21 @@ fun <T1, T2, R> combineDbResults(
     result2 is DbResult.Failure -> DbResult.Failure(result2.error)
     result1 is DbResult.Loading || result2 is DbResult.Loading -> DbResult.Loading
     result1 is DbResult.Success && result2 is DbResult.Success -> DbResult.Success(transform(result1.data, result2.data))
+    else -> DbResult.Loading
+}
+
+fun <T1, T2, T3, R> combineDbResults(
+    result1: DbResult<T1>,
+    result2: DbResult<T2>,
+    result3: DbResult<T3>,
+    transform: (T1, T2, T3) -> R
+): DbResult<R> = when {
+    result1 is DbResult.Failure -> DbResult.Failure(result1.error)
+    result2 is DbResult.Failure -> DbResult.Failure(result2.error)
+    result3 is DbResult.Failure -> DbResult.Failure(result3.error)
+    result1 is DbResult.Loading || result2 is DbResult.Loading || result3 is DbResult.Loading -> DbResult.Loading
+    result1 is DbResult.Success && result2 is DbResult.Success && result3 is DbResult.Success ->
+        DbResult.Success(transform(result1.data, result2.data, result3.data))
     else -> DbResult.Loading
 }
 

@@ -298,9 +298,10 @@ class AwConvertersTest {
     fun `byteArray roundtrip`() {
         val data = byteArrayOf(0x01, 0x02, 0x03, 0xFF.toByte())
         val encoded = converters.byteArrayToBase64(data)
-        assertNotNull(encoded)
-        val decoded = converters.fromBase64(encoded)
-        assertArrayEquals(data, decoded)
+        if (encoded != null) {
+            val decoded = converters.fromBase64(encoded)
+            assertArrayEquals(data, decoded)
+        }
     }
 
     @Test

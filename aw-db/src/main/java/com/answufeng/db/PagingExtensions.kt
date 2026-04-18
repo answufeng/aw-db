@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 /**
- * 将 Room [PagingSource] 转换为 [Flow]<[PagingData]>，集成 AndroidX Paging 3。
+ * 将 Room [PagingSource] 工厂转换为 [Flow]<[PagingData]>，集成 AndroidX Paging 3。
  *
  * ```kotlin
  * @Dao
@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.map
  *     abstract fun pagingSource(): PagingSource<Int, User>
  * }
  *
- * val pagingFlow = userDao.pagingSource().asPagingFlow(pageSize = 20)
+ * val pagingFlow = userDao::pagingSource.asPagingFlow(pageSize = 20)
  * ```
  *
  * @param T 数据类型
@@ -27,7 +27,7 @@ import kotlinx.coroutines.flow.map
  * @param initialLoadSize 初始加载大小，默认为 pageSize 的 3 倍
  * @return 分页数据 Flow
  */
-fun <T : Any> PagingSource<Int, T>.asPagingFlow(
+fun <T : Any> (() -> PagingSource<Int, T>).asPagingFlow(
     pageSize: Int = 20,
     enablePlaceholders: Boolean = true,
     initialLoadSize: Int = pageSize * 3
@@ -38,12 +38,12 @@ fun <T : Any> PagingSource<Int, T>.asPagingFlow(
             enablePlaceholders = enablePlaceholders,
             initialLoadSize = initialLoadSize
         ),
-        pagingSourceFactory = { this }
+        pagingSourceFactory = { this() }
     ).flow
 }
 
 /**
- * 将 Room [PagingSource] 转换为 [Flow]<[PagingData]<[DbResult]<T>>>，
+ * 将 Room [PagingSource] 工厂转换为 [Flow]<[PagingData]<[DbResult]<T>>>，
  * 每个分页项都包装为 [DbResult.Success]。
  *
  * @param T 数据类型
@@ -52,7 +52,7 @@ fun <T : Any> PagingSource<Int, T>.asPagingFlow(
  * @param initialLoadSize 初始加载大小，默认为 pageSize 的 3 倍
  * @return 包装了 DbResult 的分页数据 Flow
  */
-fun <T : Any> PagingSource<Int, T>.asDbResultPagingFlow(
+fun <T : Any> (() -> PagingSource<Int, T>).asDbResultPagingFlow(
     pageSize: Int = 20,
     enablePlaceholders: Boolean = true,
     initialLoadSize: Int = pageSize * 3

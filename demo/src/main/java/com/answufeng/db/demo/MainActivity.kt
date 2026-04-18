@@ -7,33 +7,32 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.answufeng.db.*
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-/**
- * aw-db 库功能演示
- * 包含：基本CRUD、事务、批量操作、Flow观察、DbResult包装
- */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var db: AppDatabase
     private lateinit var tvLog: TextView
     private lateinit var logScrollView: ScrollView
+    private var flowJob: Job? = null
+    private val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // 绑定视图
         tvLog = findViewById(R.id.tvLog)
         logScrollView = findViewById(R.id.logScrollView)
 
-        // 初始化数据库
         db = DatabaseManager.getOrCreate<AppDatabase>(this, "demo.db") {
             fallbackToDestructiveMigration()
         }
         log("数据库初始化完成: demo.db")
 
-        // 绑定按钮事件
         findViewById<Button>(R.id.btnInsert).setOnClickListener { insertUser() }
         findViewById<Button>(R.id.btnBatchInsert).setOnClickListener { batchInsert() }
         findViewById<Button>(R.id.btnQueryAll).setOnClickListener { queryUsers() }
@@ -41,21 +40,27 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnUpsert).setOnClickListener { upsertUser() }
         findViewById<Button>(R.id.btnCount).setOnClickListener { countUsers() }
         findViewById<Button>(R.id.btnDeleteAll).setOnClickListener { deleteUsers() }
+        findViewById<Button>(R.id.btnInsertOrIgnore).setOnClickListener { insertOrIgnore() }
+        findViewById<Button>(R.id.btnUpdate).setOnClickListener { updateUser() }
+        findViewById<Button>(R.id.btnDelete).setOnClickListener { deleteUser() }
         findViewById<Button>(R.id.btnDbResult).setOnClickListener { testDbResult() }
         findViewById<Button>(R.id.btnTransaction).setOnClickListener { testWithTx() }
         findViewById<Button>(R.id.btnBatchExecute).setOnClickListener { testBatchExecute() }
         findViewById<Button>(R.id.btnObserveFlow).setOnClickListener { observeFlow() }
+        findViewById<Button>(R.id.btnDebugHelper).setOnClickListener { testDebugHelper() }
         findViewById<Button>(R.id.btnClearLog).setOnClickListener { clearLog() }
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        flowJob?.cancel()
         DatabaseManager.release("demo.db")
         log("数据库连接已释放")
     }
 
     private fun log(msg: String) {
-        tvLog.append("$msg\n")
+        val timestamp = timeFormat.format(Date())
+        tvLog.append("[$timestamp] $msg\n")
         logScrollView.post { logScrollView.fullScroll(ScrollView.FOCUS_DOWN) }
         android.util.Log.d("AwDBDemo", msg)
     }
@@ -134,6 +139,48 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun insertOrIgnore() {
+        lifecycleScope.launch {
+            log("开始测试 insertOrIgnore...")
+            val dao = db.userDao()
+            val user1 = User(id = 1, name = "忽略测试1", age = 25)
+            val id1 = dao.insertOrIgnore(user1)
+            log("首次 insertOrIgnore: ID=$id1")
+            val user2 = User(id = 1, name = "忽略测试2", age = 30)
+            val id2 = dao.insertOrIgnore(user2)
+            log("重复 insertOrIgnore: ID=$id2 (冲突忽略，返回 -1)")
+        }
+    }
+
+    private fun updateUser() {
+        lifecycleScope.launch {
+            log("开始更新用户...")
+            val dao = db.userDao()
+            val user = dao.getById(1)
+            if (user != null) {
+                val updated = user.copy(name = "已更新-${System.currentTimeMillis() % 1000}")
+                val rows = dao.update(updated)
+                log("更新成功: $updated, 影响行数=$rows")
+            } else {
+                log("未找到 ID=1 的用户，无法更新")
+            }
+        }
+    }
+
+    private fun deleteUser() {
+        lifecycleScope.launch {
+            log("开始删除单条用户...")
+            val dao = db.userDao()
+            val user = dao.getById(1)
+            if (user != null) {
+                val rows = dao.delete(user)
+                log("删除成功: $user, 影响行数=$rows")
+            } else {
+                log("未找到 ID=1 的用户，无法删除")
+            }
+        }
+    }
+
     private fun testDbResult() {
         lifecycleScope.launch {
             log("开始测试 DbResult...")
@@ -179,8 +226,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun observeFlow() {
-        lifecycleScope.launch {
-            log("开始观察 Flow...")
+        if (flowJob?.isActive == true) {
+            flowJob?.cancel()
+            flowJob = null
+            log("Flow 观察已停止")
+            return
+        }
+        flowJob = lifecycleScope.launch {
+            log("开始观察 Flow（再次点击停止）...")
             db.userDao().observeAll()
                 .asDbResultWithLoading()
                 .collect { result ->
@@ -190,6 +243,25 @@ class MainActivity : AppCompatActivity() {
                         onFailure = { log("[Flow] 错误: ${it.message}") }
                     )
                 }
+        }
+    }
+
+    private fun testDebugHelper() {
+        lifecycleScope.launch {
+            log("开始测试 DbDebugHelper...")
+            val tables = db.tableList()
+            log("表列表: $tables")
+            tables.forEach { table ->
+                val count = db.rowCount(table)
+                log("  $table: $count 行")
+            }
+            val columns = db.tableSchema("User")
+            log("User 表结构:")
+            columns.forEach { col ->
+                log("  ${col.name} ${col.type}${if (col.notNull) " NOT NULL" else ""}${col.defaultValue?.let { " DEFAULT $it" } ?: ""}")
+            }
+            log("引用计数: ${DatabaseManager.getReferenceCount("demo.db")}")
+            log("是否被管理: ${DatabaseManager.isManaged("demo.db")}")
         }
     }
 }

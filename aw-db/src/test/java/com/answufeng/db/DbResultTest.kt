@@ -68,9 +68,9 @@ class DbResultTest {
         assertEquals("hello", DbResult.Success("hello").getOrThrow())
     }
 
-    @Test
-    fun `getOrThrow returns null on Loading`() {
-        assertNull(DbResult.Loading.getOrThrow())
+    @Test(expected = IllegalStateException::class)
+    fun `getOrThrow throws on Loading`() {
+        DbResult.Loading.getOrThrow()
     }
 
     @Test(expected = RuntimeException::class)
