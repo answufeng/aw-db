@@ -37,7 +37,9 @@ object DbBackupHelper {
      */
     fun backup(db: RoomDatabase, backupFile: File) {
         checkpoint(db)
-        copyFile(File(db.openHelper.readableDatabase.path.orEmpty()), backupFile)
+        val dbPath = db.openHelper.readableDatabase.path
+            ?: throw IllegalStateException("Database path is null, cannot backup")
+        copyFile(File(dbPath), backupFile)
     }
 
     /**

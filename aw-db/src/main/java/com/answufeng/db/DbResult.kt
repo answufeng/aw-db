@@ -94,12 +94,12 @@ sealed class DbResult<out T> {
         else -> default()
     }
 
-    fun recover(recover: (Throwable) -> @UnsafeVariance T): DbResult<T> = when (this) {
+    inline fun recover(crossinline recover: (Throwable) -> @UnsafeVariance T): DbResult<T> = when (this) {
         is Failure -> Success(recover(error))
         else -> this
     }
 
-    fun recoverWith(recover: (Throwable) -> DbResult<@UnsafeVariance T>): DbResult<T> = when (this) {
+    inline fun recoverWith(crossinline recover: (Throwable) -> DbResult<@UnsafeVariance T>): DbResult<T> = when (this) {
         is Failure -> recover(error)
         else -> this
     }
