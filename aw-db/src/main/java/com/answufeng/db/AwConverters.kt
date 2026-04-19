@@ -29,7 +29,7 @@ import java.util.Date
  *
  * JSON 配置说明：
  * - `ignoreUnknownKeys = true`：当数据库 schema 演进新增字段后，旧版本读取时忽略未知字段，避免反序列化失败。
- *   如果需要严格模式（任何未知字段都报错），请使用 [create] 工厂方法创建自定义实例。
+ *   如果需要严格模式（任何未知字段都报错），请自行创建 Json 实例并设置 ignoreUnknownKeys = false。
  */
 object AwConverters {
 
