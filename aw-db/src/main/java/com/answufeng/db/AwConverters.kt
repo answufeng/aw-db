@@ -42,8 +42,8 @@ object AwConverters {
     fun dateToTimestamp(date: Date?): Long? = date?.time
 
     @TypeConverter
-    fun fromStringList(value: String?): List<String> {
-        if (value.isNullOrBlank()) return emptyList()
+    fun fromStringList(value: String?): List<String>? {
+        if (value.isNullOrBlank()) return null
         return try {
             json.decodeFromString<List<String>>(value)
         } catch (e: Exception) {
@@ -54,12 +54,13 @@ object AwConverters {
     @TypeConverter
     fun stringListToString(list: List<String>?): String? {
         if (list == null) return null
+        if (list.isEmpty()) return "[]"
         return json.encodeToString(list)
     }
 
     @TypeConverter
-    fun fromLongList(value: String?): List<Long> {
-        if (value.isNullOrBlank()) return emptyList()
+    fun fromLongList(value: String?): List<Long>? {
+        if (value.isNullOrBlank()) return null
         return try {
             json.decodeFromString<List<Long>>(value)
         } catch (e: Exception) {
@@ -70,12 +71,13 @@ object AwConverters {
     @TypeConverter
     fun longListToString(list: List<Long>?): String? {
         if (list == null) return null
+        if (list.isEmpty()) return "[]"
         return json.encodeToString(list)
     }
 
     @TypeConverter
-    fun fromIntList(value: String?): List<Int> {
-        if (value.isNullOrBlank()) return emptyList()
+    fun fromIntList(value: String?): List<Int>? {
+        if (value.isNullOrBlank()) return null
         return try {
             json.decodeFromString<List<Int>>(value)
         } catch (e: Exception) {
@@ -86,12 +88,13 @@ object AwConverters {
     @TypeConverter
     fun intListToString(list: List<Int>?): String? {
         if (list == null) return null
+        if (list.isEmpty()) return "[]"
         return json.encodeToString(list)
     }
 
     @TypeConverter
-    fun fromStringSet(value: String?): Set<String> {
-        if (value.isNullOrBlank()) return emptySet()
+    fun fromStringSet(value: String?): Set<String>? {
+        if (value.isNullOrBlank()) return null
         return try {
             json.decodeFromString<Set<String>>(value)
         } catch (e: Exception) {
@@ -102,12 +105,13 @@ object AwConverters {
     @TypeConverter
     fun stringSetToString(set: Set<String>?): String? {
         if (set == null) return null
+        if (set.isEmpty()) return "[]"
         return json.encodeToString(set)
     }
 
     @TypeConverter
-    fun fromLongSet(value: String?): Set<Long> {
-        if (value.isNullOrBlank()) return emptySet()
+    fun fromLongSet(value: String?): Set<Long>? {
+        if (value.isNullOrBlank()) return null
         return try {
             json.decodeFromString<Set<Long>>(value)
         } catch (e: Exception) {
@@ -118,12 +122,13 @@ object AwConverters {
     @TypeConverter
     fun longSetToString(set: Set<Long>?): String? {
         if (set == null) return null
+        if (set.isEmpty()) return "[]"
         return json.encodeToString(set)
     }
 
     @TypeConverter
-    fun fromIntSet(value: String?): Set<Int> {
-        if (value.isNullOrBlank()) return emptySet()
+    fun fromIntSet(value: String?): Set<Int>? {
+        if (value.isNullOrBlank()) return null
         return try {
             json.decodeFromString<Set<Int>>(value)
         } catch (e: Exception) {
@@ -134,12 +139,13 @@ object AwConverters {
     @TypeConverter
     fun intSetToString(set: Set<Int>?): String? {
         if (set == null) return null
+        if (set.isEmpty()) return "[]"
         return json.encodeToString(set)
     }
 
     @TypeConverter
-    fun fromStringMap(value: String?): Map<String, String> {
-        if (value.isNullOrBlank()) return emptyMap()
+    fun fromStringMap(value: String?): Map<String, String>? {
+        if (value.isNullOrBlank()) return null
         return try {
             json.decodeFromString<Map<String, String>>(value)
         } catch (e: Exception) {
@@ -150,12 +156,13 @@ object AwConverters {
     @TypeConverter
     fun stringMapToString(map: Map<String, String>?): String? {
         if (map == null) return null
+        if (map.isEmpty()) return "{}"
         return json.encodeToString(map)
     }
 
     @TypeConverter
-    fun fromLongMap(value: String?): Map<String, Long> {
-        if (value.isNullOrBlank()) return emptyMap()
+    fun fromLongMap(value: String?): Map<String, Long>? {
+        if (value.isNullOrBlank()) return null
         return try {
             json.decodeFromString<Map<String, Long>>(value)
         } catch (e: Exception) {
@@ -166,12 +173,13 @@ object AwConverters {
     @TypeConverter
     fun longMapToString(map: Map<String, Long>?): String? {
         if (map == null) return null
+        if (map.isEmpty()) return "{}"
         return json.encodeToString(map)
     }
 
     @TypeConverter
-    fun fromIntMap(value: String?): Map<String, Int> {
-        if (value.isNullOrBlank()) return emptyMap()
+    fun fromIntMap(value: String?): Map<String, Int>? {
+        if (value.isNullOrBlank()) return null
         return try {
             json.decodeFromString<Map<String, Int>>(value)
         } catch (e: Exception) {
@@ -182,6 +190,7 @@ object AwConverters {
     @TypeConverter
     fun intMapToString(map: Map<String, Int>?): String? {
         if (map == null) return null
+        if (map.isEmpty()) return "{}"
         return json.encodeToString(map)
     }
 

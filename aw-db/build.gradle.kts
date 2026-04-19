@@ -41,12 +41,12 @@ android {
 dependencies {
     api(libs.room.runtime)
     api(libs.room.ktx)
-    implementation(libs.room.paging)
+    api(libs.room.paging)
     implementation(libs.core.ktx)
     implementation(libs.annotation)
     implementation(libs.coroutines.core)
     implementation(libs.coroutines.android)
-    implementation(libs.lifecycle.livedata.ktx)
+    api(libs.lifecycle.livedata.ktx)
     api(libs.kotlinx.serialization.json)
 
     testImplementation(libs.junit)
