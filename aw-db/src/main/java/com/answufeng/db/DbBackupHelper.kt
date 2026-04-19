@@ -48,6 +48,8 @@ object DbBackupHelper {
      * 恢复前会先关闭当前数据库实例，拷贝备份文件后再重新打开。
      * 如果使用 [DatabaseManager] 管理数据库，恢复后需要重新调用 [DatabaseManager.getOrCreate]。
      *
+     * **注意**：此方法不是线程安全的，调用方需确保恢复期间不会有其他线程访问数据库。
+     *
      * @param T 数据库类型
      * @param context Context
      * @param name 数据库文件名
@@ -62,10 +64,12 @@ object DbBackupHelper {
         backupFile: File,
         noinline block: DatabaseConfig.() -> Unit = {}
     ): T {
-        DatabaseManager.release(name)
-        val dbFile = context.getDatabasePath(name)
-        copyFile(backupFile, dbFile)
-        return DatabaseManager.getOrCreate(context, name, block)
+        synchronized(DatabaseManager.lock) {
+            DatabaseManager.release(name)
+            val dbFile = context.getDatabasePath(name)
+            copyFile(backupFile, dbFile)
+            return DatabaseManager.getOrCreate(context, name, block)
+        }
     }
 
     /**

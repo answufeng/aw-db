@@ -103,8 +103,18 @@ object DatabaseManager {
      */
     fun closeAll() {
         synchronized(lock) {
-            instances.values.forEach { it.database.close() }
+            val errors = mutableListOf<Exception>()
+            instances.values.forEach { managed ->
+                try {
+                    managed.database.close()
+                } catch (e: Exception) {
+                    errors.add(e)
+                }
+            }
             instances.clear()
+            if (errors.isNotEmpty()) {
+                throw IllegalStateException("关闭数据库时发生 ${errors.size} 个错误，首个错误: ${errors.first().message}", errors.first())
+            }
         }
     }
 
