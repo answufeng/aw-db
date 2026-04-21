@@ -3,8 +3,9 @@ package com.answufeng.db
 import android.content.Context
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import androidx.room.migration.Migration
 import androidx.room.migration.AutoMigrationSpec
+import androidx.room.migration.Migration
+import java.io.File
 import java.util.concurrent.Executor
 
 @DslMarker
@@ -97,7 +98,7 @@ class DatabaseConfig {
     private var allowMainThread = false
     private var journalMode: RoomDatabase.JournalMode? = null
     private var assetFilePath: String? = null
-    private var databaseFile: java.io.File? = null
+    private var databaseFile: File? = null
     private var queryExecutor: Executor? = null
     private var transactionExecutor: Executor? = null
     private var multiInstanceInvalidation: Boolean = false
@@ -143,7 +144,7 @@ class DatabaseConfig {
     }
 
     /** 从文件创建预打包数据库。 */
-    fun createFromFile(databaseFile: java.io.File) {
+    fun createFromFile(databaseFile: File) {
         this.databaseFile = databaseFile
     }
 

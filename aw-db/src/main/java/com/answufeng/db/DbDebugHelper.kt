@@ -6,13 +6,18 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 /**
  * 数据库调试辅助工具，提供表信息查询功能。
  *
+ * 这些方法直接访问 SQLite 系统表（`sqlite_master`、`PRAGMA table_info`），
+ * 适用于开发阶段验证数据库 schema 或在测试中检查数据状态。
+ *
+ * **注意**：
+ * - 这些方法会在调用线程同步执行数据库查询，避免在主线程频繁调用。
+ * - 生产环境可以使用，但建议仅在诊断场景下调用（如错误上报时附带表信息）。
+ *
  * ```kotlin
  * val tables = db.tableList()
  * val count = db.rowCount("users")
  * val columns = db.tableSchema("users")
  * ```
- *
- * 注意：这些方法会直接访问 SQLite 数据库，应在调试阶段使用，不建议在生产环境频繁调用。
  */
 object DbDebugHelper {
 

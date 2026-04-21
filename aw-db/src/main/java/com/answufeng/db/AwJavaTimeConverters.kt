@@ -8,7 +8,20 @@ import java.time.LocalDateTime
 /**
  * java.time 类型转换器，支持 JSR-310 时间类型。
  *
- * 需要启用 `coreLibraryDesugaring` 才能在 minSdk < 26 的设备上使用。
+ * 需要启用 `coreLibraryDesugaring` 才能在 minSdk < 26 的设备上使用：
+ *
+ * ```kotlin
+ * android {
+ *     compileOptions {
+ *         isCoreLibraryDesugaringEnabled = true
+ *     }
+ * }
+ * dependencies {
+ *     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+ * }
+ * ```
+ *
+ * 在数据库类上注册：
  *
  * ```kotlin
  * @Database(entities = [...], version = 1)

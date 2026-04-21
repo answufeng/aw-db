@@ -33,7 +33,7 @@ data class PagedResult<T>(
     /** 是否为首页（page == 0）。 */
     val isFirstPage: Boolean get() = page == 0
 
-    /** 当前页是否为空。 */
+    /** 当前页是否为空（等价于 `items.isEmpty()`）。 */
     val isEmpty: Boolean get() = items.isEmpty()
 }
 

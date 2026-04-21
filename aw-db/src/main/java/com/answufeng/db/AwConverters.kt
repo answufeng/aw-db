@@ -1,9 +1,9 @@
 package com.answufeng.db
 
+import android.util.Base64
 import androidx.room.TypeConverter
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
-import android.util.Base64
 import java.util.Date
 
 /**
@@ -33,6 +33,12 @@ import java.util.Date
  */
 object AwConverters {
 
+    /**
+     * 内部使用的 JSON 序列化实例。
+     *
+     * 配置了 `ignoreUnknownKeys = true` 以兼容 schema 演进。
+     * 供所有 JSON 类型的 TypeConverter 方法共享使用。
+     */
     internal val json = Json { ignoreUnknownKeys = true }
 
     @TypeConverter

@@ -12,6 +12,9 @@ import java.io.IOException
  *
  * 备份时会先执行 WAL checkpoint 将所有待写数据刷入主数据库文件，确保备份完整性。
  *
+ * **注意**：[restore] 方法不是线程安全的，调用方需确保恢复期间不会有其他线程访问数据库。
+ * 如果使用 [DatabaseManager] 管理数据库，[restore] 内部会自动关闭当前实例后再恢复。
+ *
  * ```kotlin
  * // 备份数据库到文件
  * val backupFile = File(context.filesDir, "backup/app.db")

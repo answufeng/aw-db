@@ -1,4 +1,3 @@
-
 # aw-db ProGuard Rules
 # 此文件用于库自身的 release 构建混淆规则
 # Consumer-facing rules（供使用者混淆时使用）位于 consumer-rules.pro
@@ -14,6 +13,7 @@
 -keepattributes InnerClasses
 -keepattributes Signature
 -keepattributes Exceptions
+-keepattributes KotlinDebugMetadata
 -keep class kotlin.Metadata { *; }
 
 # ===========================================================
@@ -24,26 +24,3 @@
     public static **[] values();
     public static ** valueOf(java.lang.String);
 }
-
-# ===========================================================
-# 保留 Serializable
-# ===========================================================
-
--keepclassmembers class * implements java.io.Serializable {
-    static final long serialVersionUID;
-    private static final java.io.ObjectStreamField[] serialPersistentFields;
-    !static !transient *;
-    private void writeObject(java.io.ObjectOutputStream);
-    private void readObject(java.io.ObjectInputStream);
-    java.lang.Object writeReplace();
-    java.lang.Object readResolve();
-}
-
-# ===========================================================
-# 保留 Parcelable CREATOR
-# ===========================================================
-
--keepclassmembers class * implements android.os.Parcelable {
-    public static final android.os.Parcelable$Creator *;
-}
-

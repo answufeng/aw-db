@@ -161,6 +161,12 @@ object DatabaseManager {
         }
     }
 
+    /**
+     * 封装被管理的数据库实例及其引用计数。
+     *
+     * @param database Room 数据库实例
+     * @param refCount 当前引用计数，归零时数据库实例被关闭并移除
+     */
     @PublishedApi
     internal class ManagedDatabase<T : RoomDatabase>(
         val database: T,

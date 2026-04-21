@@ -3,7 +3,7 @@ package com.answufeng.db
 import org.junit.Assert.*
 import org.junit.Test
 
-class MigrationHelperTest {
+class MigrationDslTest {
 
     @Test
     fun `migration creates valid Migration object`() {

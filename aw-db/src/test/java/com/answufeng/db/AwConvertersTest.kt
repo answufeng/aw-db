@@ -48,13 +48,13 @@ class AwConvertersTest {
     // ==================== List<String> ↔ String (JSON) ====================
 
     @Test
-    fun `fromStringList null returns empty`() {
-        assertEquals(emptyList<String>(), converters.fromStringList(null))
+    fun `fromStringList null returns null`() {
+        assertNull(converters.fromStringList(null))
     }
 
     @Test
-    fun `fromStringList blank returns empty`() {
-        assertEquals(emptyList<String>(), converters.fromStringList("   "))
+    fun `fromStringList blank returns null`() {
+        assertNull(converters.fromStringList("   "))
     }
 
     @Test
@@ -114,13 +114,13 @@ class AwConvertersTest {
     // ==================== List<Long> ↔ String (JSON) ====================
 
     @Test
-    fun `fromLongList null returns empty`() {
-        assertEquals(emptyList<Long>(), converters.fromLongList(null))
+    fun `fromLongList null returns null`() {
+        assertNull(converters.fromLongList(null))
     }
 
     @Test
-    fun `fromLongList blank returns empty`() {
-        assertEquals(emptyList<Long>(), converters.fromLongList(""))
+    fun `fromLongList blank returns null`() {
+        assertNull(converters.fromLongList(""))
     }
 
     @Test
@@ -159,8 +159,8 @@ class AwConvertersTest {
     // ==================== Set<String> ↔ String ====================
 
     @Test
-    fun `fromStringSet null returns empty`() {
-        assertEquals(emptySet<String>(), converters.fromStringSet(null))
+    fun `fromStringSet null returns null`() {
+        assertNull(converters.fromStringSet(null))
     }
 
     @Test
@@ -178,8 +178,8 @@ class AwConvertersTest {
     // ==================== Set<Long> ↔ String ====================
 
     @Test
-    fun `fromLongSet null returns empty`() {
-        assertEquals(emptySet<Long>(), converters.fromLongSet(null))
+    fun `fromLongSet null returns null`() {
+        assertNull(converters.fromLongSet(null))
     }
 
     @Test
@@ -192,13 +192,13 @@ class AwConvertersTest {
     // ==================== Map<String, String> ↔ String ====================
 
     @Test
-    fun `fromStringMap null returns empty`() {
-        assertEquals(emptyMap<String, String>(), converters.fromStringMap(null))
+    fun `fromStringMap null returns null`() {
+        assertNull(converters.fromStringMap(null))
     }
 
     @Test
-    fun `fromStringMap blank returns empty`() {
-        assertEquals(emptyMap<String, String>(), converters.fromStringMap(""))
+    fun `fromStringMap blank returns null`() {
+        assertNull(converters.fromStringMap(""))
     }
 
     @Test(expected = IllegalArgumentException::class)
@@ -238,8 +238,8 @@ class AwConvertersTest {
     // ==================== Map<String, Long> ↔ String ====================
 
     @Test
-    fun `fromLongMap null returns empty`() {
-        assertEquals(emptyMap<String, Long>(), converters.fromLongMap(null))
+    fun `fromLongMap null returns null`() {
+        assertNull(converters.fromLongMap(null))
     }
 
     @Test

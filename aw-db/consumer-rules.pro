@@ -1,11 +1,12 @@
 # aw-db consumer ProGuard rules
+# 这些规则通过 consumerProguardFiles 自动应用到宿主应用
 
 # Room
 -keep class * extends androidx.room.RoomDatabase
 -keep @androidx.room.Entity class *
 -dontwarn androidx.room.paging.**
 
-# TypeConverters
+# TypeConverters — 保留标注了 @TypeConverter 的方法
 -keepclassmembers class com.answufeng.db.AwConverters {
     @androidx.room.TypeConverter *;
 }
@@ -16,51 +17,36 @@
     @androidx.room.TypeConverter *;
 }
 
-# DbResult sealed class
--keep class com.answufeng.db.DbResult { *; }
--keep class com.answufeng.db.DbResult$* { *; }
+# kotlinx.serialization — 库使用了 kotlinx.serialization JSON
+-keepattributes *Annotation*, InnerClasses
+-dontwarn kotlinx.serialization.**
+-keep class kotlinx.serialization.json.** { *; }
+-keepclassmembers class com.answufeng.db.AwConverters {
+    kotlinx.serialization.json.Json json;
+}
 
-# BatchResult sealed class
--keep class com.answufeng.db.BatchResult { *; }
--keep class com.answufeng.db.BatchResult$* { *; }
+# 密封类 — 保留构造方法和数据类成员（反射反序列化需要）
+-keepclassmembers class com.answufeng.db.DbResult$Success {
+    public <init>(java.lang.Object);
+}
+-keepclassmembers class com.answufeng.db.DbResult$Failure {
+    public <init>(java.lang.Throwable);
+}
 
-# PagedResult
--keep class com.answufeng.db.PagedResult { *; }
+-keepclassmembers class com.answufeng.db.BatchResult$Skipped {
+    public <init>(int, int, java.util.List);
+}
+-keepclassmembers class com.answufeng.db.BatchResult$AllOrNothing {
+    public <init>(kotlin.Result);
+}
 
-# DatabaseManager
+# 库公开 API — 保持可访问性（反射/调试场景）
 -keep class com.answufeng.db.DatabaseManager { *; }
--keep class com.answufeng.db.DatabaseManager$* { *; }
-
-# AwDatabase (DSL builder)
 -keep class com.answufeng.db.AwDatabase { *; }
--keep class com.answufeng.db.AwDatabase$* { *; }
-
-# MigrationHelper
--keep class com.answufeng.db.MigrationHelper { *; }
--keep class com.answufeng.db.MigrationHelper$* { *; }
-
-# TransactionHelper
--keep class com.answufeng.db.TransactionHelper { *; }
--keep class com.answufeng.db.TransactionHelper$* { *; }
--keep class com.answufeng.db.TransactionHelperKt { *; }
-
-# PagingExt
--keep class com.answufeng.db.PagingExtKt { *; }
-
-# DbDebugHelper
--keep class com.answufeng.db.DbDebugHelper { *; }
--keep class com.answufeng.db.DbDebugHelperKt { *; }
-
-# BaseDao
--keep class com.answufeng.db.BaseDao { *; }
-
-# DSL builder
 -keep class com.answufeng.db.DatabaseConfig { *; }
--keep class com.answufeng.db.DatabaseConfig$* { *; }
--keep interface com.answufeng.db.AwDbDsl { *; }
+-keep class com.answufeng.db.BaseDao { *; }
+-keep class com.answufeng.db.DbDebugHelper { *; }
 
-# DbResult extension functions
--keep class com.answufeng.db.DbResultKt { *; }
-
-# Kotlin metadata
--keepattributes Signature, *Annotation*
+# Kotlin 元数据
+-keepattributes Signature, *Annotation*, KotlinDebugMetadata
+-keep class kotlin.Metadata { *; }

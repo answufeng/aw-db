@@ -64,9 +64,17 @@ fun <T : Any> (() -> PagingSource<Int, T>).asDbResultPagingFlow(
 /**
  * 转换 [DbResult] 分页数据中的成功数据。
  *
+ * 仅对成功状态的内部数据进行转换，Loading 和 Failure 状态保持不变。
+ *
+ * ```kotlin
+ * val mappedFlow = dbResultPagingFlow.mapResult { user ->
+ *     UserUiModel(user.name, user.age)
+ * }
+ * ```
+ *
  * @param T 原始数据类型
  * @param R 转换后的数据类型
- * @param transform 转换函数
+ * @param transform 将原始类型 T 转换为目标类型 R 的函数，仅对 Success 状态调用
  * @return 转换后的分页数据 Flow
  */
 fun <T : Any, R : Any> Flow<PagingData<DbResult<T>>>.mapResult(
