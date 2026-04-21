@@ -27,5 +27,41 @@
 # PagedResult
 -keep class com.answufeng.db.PagedResult { *; }
 
+# DatabaseManager
+-keep class com.answufeng.db.DatabaseManager { *; }
+-keep class com.answufeng.db.DatabaseManager$* { *; }
+
+# AwDatabase (DSL builder)
+-keep class com.answufeng.db.AwDatabase { *; }
+-keep class com.answufeng.db.AwDatabase$* { *; }
+
+# MigrationHelper
+-keep class com.answufeng.db.MigrationHelper { *; }
+-keep class com.answufeng.db.MigrationHelper$* { *; }
+
+# TransactionHelper
+-keep class com.answufeng.db.TransactionHelper { *; }
+-keep class com.answufeng.db.TransactionHelper$* { *; }
+-keep class com.answufeng.db.TransactionHelperKt { *; }
+
+# PagingExt
+-keep class com.answufeng.db.PagingExtKt { *; }
+
+# DbDebugHelper
+-keep class com.answufeng.db.DbDebugHelper { *; }
+-keep class com.answufeng.db.DbDebugHelperKt { *; }
+
+# BaseDao
+-keep class com.answufeng.db.BaseDao { *; }
+
+# DSL builder
+-keep class com.answufeng.db.DatabaseConfig { *; }
+-keep class com.answufeng.db.DatabaseConfig$Builder { *; }
+-keep class com.answufeng.db.DatabaseConfig$* { *; }
+-keep interface com.answufeng.db.AwDbDsl { *; }
+
+# DbResult extension functions
+-keep class com.answufeng.db.DbResultKt { *; }
+
 # Kotlin metadata
 -keepattributes Signature, *Annotation*
