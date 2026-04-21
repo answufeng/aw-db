@@ -7,6 +7,13 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 
+/**
+ * 数据库操作结果的密封类
+ *
+ * 用于封装数据库操作的三种状态：加载中、成功、失败
+ *
+ * @param T 数据类型
+ */
 sealed class DbResult<out T> {
 
     data object Loading : DbResult<Nothing>()
