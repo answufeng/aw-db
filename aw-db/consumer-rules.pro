@@ -56,7 +56,6 @@
 
 # DSL builder
 -keep class com.answufeng.db.DatabaseConfig { *; }
--keep class com.answufeng.db.DatabaseConfig$Builder { *; }
 -keep class com.answufeng.db.DatabaseConfig$* { *; }
 -keep interface com.answufeng.db.AwDbDsl { *; }
 
