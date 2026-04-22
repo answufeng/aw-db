@@ -5,9 +5,12 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.appbar.MaterialToolbar
 import androidx.lifecycle.lifecycleScope
 import com.answufeng.db.*
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -45,6 +48,9 @@ class MainActivity : AppCompatActivity() {
         tvFlowStatus = findViewById(R.id.tvFlowStatus)
         tvBackupPath = findViewById(R.id.tvBackupPath)
 
+        val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
+        setSupportActionBar(toolbar)
+
         db = DatabaseManager.getOrCreate<AppDatabase>(this, dbName) {
             fallbackToDestructiveMigration()
         }
@@ -77,6 +83,23 @@ class MainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.btnCopyLog).setOnClickListener { copyLog() }
         findViewById<TextView>(R.id.btnShareLog).setOnClickListener { shareLog() }
         findViewById<TextView>(R.id.btnClearLog).setOnClickListener { clearLog() }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.demo_main_menu, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
+        R.id.action_demo_playbook -> {
+            MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.demo_playbook_title)
+                .setMessage(R.string.demo_playbook_message)
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
+            true
+        }
+        else -> super.onOptionsItemSelected(item)
     }
 
     override fun onDestroy() {

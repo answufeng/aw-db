@@ -1,6 +1,8 @@
 <resources>
     <string name="app_name">aw-db Demo</string>
     <string name="title_main">aw-db Demo</string>
+    <string name="demo_playbook_title">演示清单</string>
+    <string name="demo_playbook_message">按钮与能力索引见 demo/DEMO_MATRIX.md。\n\n覆盖：CRUD、DbResult、事务与 batchExecute、Flow、DebugHelper、分页模型、备份/恢复、DatabaseManager 路径。\n\n生产环境请务必配置正式迁移路径，避免 fallbackToDestructiveMigration。</string>
 
     <string name="section_basic">基础操作</string>
     <string name="section_advanced">高级能力</string>

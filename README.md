@@ -20,6 +20,23 @@ Room 数据库工具库，提供 DSL 风格的数据库构建器、通用 DAO、
 - minSdk 24+
 - Kotlin 2.0+
 - Room 2.6.1+
+- 本仓库 **demo** 使用 **compileSdk 35** / **targetSdk 35** 做集成验证（库自身不限定宿主 targetSdk，但请在目标版本上回归存储与后台行为）。
+
+### API 行为矩阵（摘录）
+
+| 能力 | minSdk 24 行为 |
+|------|----------------|
+| Room / SQLite | 标准 API，无额外反射壳 |
+| `kotlinx.serialization` 转换 | 与 `AwConverters` 内建 Json 一致；升级序列化版本时请与库内 BOM 对齐 |
+| Paging 3 | `room-paging` 随库 `api` 传递；宿主需与自身 `paging-runtime` 版本兼容 |
+| 预打包 DB / 迁移 | 由 `DatabaseConfig` / Migration DSL 配置；请在真机低存储场景测迁移 |
+
+## 工程品质与发版检查
+
+- **CI**：[`.github/workflows/ci.yml`](.github/workflows/ci.yml) — `assembleRelease`、`ktlintCheck`、`lintRelease`、`:demo:assembleRelease`。
+- **本地建议**：`./gradlew :aw-db:assembleRelease :aw-db:ktlintCheck :aw-db:lintRelease :demo:assembleRelease`
+- **演示**：[demo/DEMO_MATRIX.md](demo/DEMO_MATRIX.md)；demo 工具栏 **「演示清单」**。
+- **上线前**：必须为每个 DB 版本准备**正式迁移**；避免在生产使用 `fallbackToDestructiveMigration()`；大表迁移在真机低存储与后台限制下各验一次。
 
 ## 引入
 
@@ -95,6 +112,10 @@ db.userDao().observeAll()
               .onFailure { showError(it) }
     }
 ```
+
+## 演示应用
+
+`demo` 覆盖 CRUD、`DbResult`、Flow、备份恢复、分页等；操作清单见 [demo/DEMO_MATRIX.md](demo/DEMO_MATRIX.md)。
 
 ## API 文档
 

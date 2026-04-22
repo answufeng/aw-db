@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlinx.serialization)
+    alias(libs.plugins.ktlint)
 }
 
 android {
@@ -23,10 +24,6 @@ android {
         jvmTarget = "17"
     }
 
-    testOptions {
-        unitTests.isReturnDefaultValues = true
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -38,9 +35,14 @@ android {
     }
 
     lint {
-        abortOnError = false
+        abortOnError = true
         warningsAsErrors = false
     }
+}
+
+ktlint {
+    android.set(true)
+    ignoreFailures = false
 }
 
 dependencies {
@@ -53,9 +55,6 @@ dependencies {
     implementation(libs.coroutines.android)
     api(libs.lifecycle.livedata.ktx)
     api(libs.kotlinx.serialization.json)
-
-    testImplementation(libs.junit)
-    testImplementation(libs.coroutines.test)
 }
 
 apply(from = "${rootDir}/gradle/publish.gradle.kts")

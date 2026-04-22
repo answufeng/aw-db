@@ -1,5 +1,6 @@
 # aw-db consumer ProGuard rules
 # 这些规则通过 consumerProguardFiles 自动应用到宿主应用
+# R8 full mode：建议在宿主 release 用 -printusage 抽样，逐步收紧 -keep（Room/Gson 反射边界以官方规则为准）
 
 # Room
 -keep class * extends androidx.room.RoomDatabase
