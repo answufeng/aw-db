@@ -146,11 +146,9 @@ val db = AwDatabase.build<AppDatabase>(context, "app.db") {
     // WAL 日志模式
     setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
 
-    // 预打包数据库
+    // 预打包数据库（与下面 createFromFile 二选一，不能同时配置）
     createFromAsset("databases/prepopulated.db")
-
-    // 从文件创建
-    createFromFile(File("/path/to/db"))
+    // createFromFile(File("/path/to/prepopulated.db"))
 
     // 自定义查询线程池
     setQueryExecutor(Executors.newFixedThreadPool(4))
@@ -347,7 +345,7 @@ when (result) {
     is BatchResult.AllOrNothing -> {}
 }
 
-// FAIL_FAST 策略：任一失败则全部回滚
+// FAIL_FAST 策略：任一失败则全部回滚（整批在单事务中，batchSize 须为 0；需分批请用 SKIP 策略）
 val result = db.batchExecute(users, BatchFailureStrategy.FAIL_FAST) { user ->
     userDao.insert(user)
 }
@@ -359,6 +357,9 @@ when (result) {
     }
 }
 ```
+
+> `safeTransaction`、`dbResultOf` 以及 Flow 的 `asDbResult` / `asDbResultWithLoading` 会**重新抛出**
+> `kotlinx.coroutines.CancellationException`，以便协程取消不被当成普通 `Failure`。
 
 ### Migration DSL
 
@@ -501,7 +502,12 @@ if (result.hasMore) loadMore()
 
 ### DatabaseManager — 数据库生命周期管理
 
-`DatabaseManager` 提供引用计数的数据库单例管理，防止多实例打开同一数据库文件：
+`DatabaseManager` 提供引用计数的数据库单例管理，防止多实例打开同一数据库文件。
+
+- 首次 `getOrCreate` 时执行 DSL `block` 并完成构建；**同一** `name` 已存在时**不会**再执行 `block`（以首次成功创建时的配置为准）。
+- 同一 `name` 必须始终对应**同一** `RoomDatabase` 子类；若已打开 `AppDatabase` 又以另一类型请求，会抛出 `IllegalStateException`（`getOrNull` 在名称已存在但类型不符时亦会抛出，而不再默默返回 `null`）。
+- `forceClose(name)`：无视引用计数，立即 `close` 并移除该名称实例。用于备份恢复等**必须在替换数据库文件前**保证连接全部关闭的场景；一般业务请用 `release` 成对管理。
+- 使用 `DbBackupHelper.restore` 时，内部会调用 `forceClose`，旧句柄在恢复后**不得再使用**；应重新 `getOrCreate` 取得新库。
 
 ```kotlin
 // 获取数据库实例（自动引用计数）
@@ -513,10 +519,13 @@ val db = DatabaseManager.getOrCreate<AppDatabase>(context, "app.db") {
 // 释放引用（计数归零时自动关闭数据库）
 DatabaseManager.release("app.db")
 
+// 必须立即关闭并换文件/进程级重建时（慎用，避免持有旧引用）
+DatabaseManager.forceClose("app.db")
+
 // 关闭所有数据库实例
 DatabaseManager.closeAll()
 
-// 获取已存在的实例（不创建新实例）
+// 获取已存在的实例（不创建新实例；Java 可 DatabaseManager.getOrNull("app.db", AppDatabase::class.java)）
 val existingDb: AppDatabase? = DatabaseManager.getOrNull("app.db")
 
 // 检查数据库是否已初始化

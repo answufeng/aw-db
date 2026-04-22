@@ -1,3 +1,40 @@
 <resources>
     <string name="app_name">aw-db Demo</string>
+    <string name="title_main">aw-db Demo</string>
+
+    <string name="section_basic">基础操作</string>
+    <string name="section_advanced">高级能力</string>
+    <string name="section_logs">操作日志</string>
+
+    <string name="action_insert">插入用户</string>
+    <string name="action_batch_insert">批量插入</string>
+    <string name="action_query_all">查询所有</string>
+    <string name="action_query_by_id">按 ID 查询</string>
+    <string name="action_upsert">更新/插入</string>
+    <string name="action_count">统计数量</string>
+    <string name="action_insert_or_ignore">忽略插入</string>
+    <string name="action_update">更新单条</string>
+    <string name="action_delete">删除单条</string>
+    <string name="action_delete_all">删除所有</string>
+
+    <string name="action_db_result">DbResult</string>
+    <string name="action_transaction">事务操作</string>
+    <string name="action_batch_execute">批量执行</string>
+    <string name="action_observe_flow">Flow 观察</string>
+    <string name="action_debug_helper">调试工具</string>
+    <string name="action_paged_result">手动分页</string>
+    <string name="action_backup">备份</string>
+    <string name="action_restore">恢复</string>
+    <string name="action_get_or_null">getOrNull</string>
+
+    <string name="action_clear_log">清除</string>
+    <string name="action_copy_log">复制</string>
+    <string name="action_share_log">分享</string>
+    <string name="action_refresh">刷新</string>
+
+    <string name="hint_logs">操作日志将显示在这里…\n点击上方按钮开始测试数据库功能</string>
+    <string name="label_db_name">数据库</string>
+    <string name="label_user_count">用户数</string>
+    <string name="label_flow">Flow</string>
+    <string name="label_backup">备份文件</string>
 </resources>

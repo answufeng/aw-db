@@ -138,13 +138,19 @@ class DatabaseConfig {
         journalMode = mode
     }
 
-    /** 从 Asset 文件创建预打包数据库。 */
+    /** 从 Asset 文件创建预打包数据库（与 [createFromFile] 二选一）。 */
     fun createFromAsset(assetFilePath: String) {
+        require(databaseFile == null) {
+            "createFromFile() was already configured; use only one of createFromAsset or createFromFile."
+        }
         this.assetFilePath = assetFilePath
     }
 
-    /** 从文件创建预打包数据库。 */
+    /** 从文件创建预打包数据库（与 [createFromAsset] 二选一）。 */
     fun createFromFile(databaseFile: File) {
+        require(assetFilePath == null) {
+            "createFromAsset() was already configured; use only one of createFromAsset or createFromFile."
+        }
         this.databaseFile = databaseFile
     }
 

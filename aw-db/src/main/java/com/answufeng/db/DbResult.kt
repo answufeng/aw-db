@@ -2,6 +2,7 @@ package com.answufeng.db
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.asLiveData
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -121,6 +122,7 @@ fun <T1, T2, R> combineDbResults(
     result2 is DbResult.Failure -> DbResult.Failure(result2.error)
     result1 is DbResult.Loading || result2 is DbResult.Loading -> DbResult.Loading
     result1 is DbResult.Success && result2 is DbResult.Success -> DbResult.Success(transform(result1.data, result2.data))
+    // Defensive: two-arg combine only has Loading/Failure/Success; never reached if states stay consistent.
     else -> DbResult.Loading
 }
 
@@ -178,14 +180,20 @@ fun <T1, T2, T3, T4, T5, R> combineDbResults(
 fun <T> Flow<T>.asDbResult(): Flow<DbResult<T>> {
     return this
         .map<T, DbResult<T>> { DbResult.Success(it) }
-        .catch { emit(DbResult.Failure(it)) }
+        .catch { t ->
+            if (t is CancellationException) throw t
+            emit(DbResult.Failure(t))
+        }
 }
 
 fun <T> Flow<T>.asDbResultWithLoading(): Flow<DbResult<T>> {
     return this
         .map<T, DbResult<T>> { DbResult.Success(it) }
         .onStart { emit(DbResult.Loading) }
-        .catch { emit(DbResult.Failure(it)) }
+        .catch { t ->
+            if (t is CancellationException) throw t
+            emit(DbResult.Failure(t))
+        }
 }
 
 /**
@@ -223,6 +231,7 @@ suspend fun <T> dbResultOf(block: suspend () -> T): DbResult<T> {
     return try {
         DbResult.Success(block())
     } catch (e: Exception) {
+        if (e is CancellationException) throw e
         DbResult.Failure(e)
     }
 }

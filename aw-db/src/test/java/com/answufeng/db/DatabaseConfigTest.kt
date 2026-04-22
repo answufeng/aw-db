@@ -71,4 +71,18 @@ class DatabaseConfigTest {
         config.setJournalMode(androidx.room.RoomDatabase.JournalMode.AUTOMATIC)
         config.createFromAsset("databases/prepopulated.db")
     }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `createFromFile after createFromAsset throws`() {
+        val config = DatabaseConfig()
+        config.createFromAsset("databases/prepopulated.db")
+        config.createFromFile(java.io.File("/tmp/second.db"))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `createFromAsset after createFromFile throws`() {
+        val config = DatabaseConfig()
+        config.createFromFile(java.io.File("/tmp/first.db"))
+        config.createFromAsset("databases/prepopulated.db")
+    }
 }

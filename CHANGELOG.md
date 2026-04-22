@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `DbBackupHelper.restore`：改为通过 `DatabaseManager.forceClose` 在恢复前强制关闭数据库，避免引用计数大于 1 时仍覆盖文件导致损坏。
+- `DatabaseManager`：同一数据库名混用不同 `RoomDatabase` 子类时抛出 `IllegalStateException`；`getOrNull` 在类型不符时同样抛出，避免静默 `null`。
+- `DatabaseConfig`：`createFromAsset` 与 `createFromFile` 互斥，防止 Room Builder 上重复配置预置库来源。
+- `batchExecute`：`FAIL_FAST` 与 `batchSize > 0` 组合非法（此前后者被静默忽略），现显式 `require` 失败并提示使用 `SKIP` 或 `batchSize = 0`。
+- 协程取消：`safeTransaction`、`dbResultOf`、带逐条 `catch` 的 `batchExecute`（SKIP 路径与 FAIL_FAST）及 `asDbResult` / `asDbResultWithLoading` 对 `CancellationException` 选择重新抛出，避免取消被误当作业务失败或跳过项。
+
+### Changed
+
+- 新增 `DatabaseManager.forceClose(name)` 供备份恢复等需无视引用计数的场景。
+
 ## [1.0.0] - 2024-01-01
 
 ### Added

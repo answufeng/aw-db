@@ -13,7 +13,9 @@ import java.io.IOException
  * 备份时会先执行 WAL checkpoint 将所有待写数据刷入主数据库文件，确保备份完整性。
  *
  * **注意**：[restore] 方法不是线程安全的，调用方需确保恢复期间不会有其他线程访问数据库。
- * 如果使用 [DatabaseManager] 管理数据库，[restore] 内部会自动关闭当前实例后再恢复。
+ * 如果使用 [DatabaseManager] 管理数据库，[restore] 内部会调用 [DatabaseManager.forceClose]
+ * 立即关闭并移除该名称对应实例（**无视引用计数**），再拷贝文件，因此恢复后所有调用方
+ * 须通过 [DatabaseManager.getOrCreate] 重新取得数据库。
  *
  * ```kotlin
  * // 备份数据库到文件
@@ -48,8 +50,9 @@ object DbBackupHelper {
     /**
      * 从备份文件恢复数据库。
      *
-     * 恢复前会先关闭当前数据库实例，拷贝备份文件后再重新打开。
-     * 如果使用 [DatabaseManager] 管理数据库，恢复后需要重新调用 [DatabaseManager.getOrCreate]。
+     * 若通过 [DatabaseManager] 管理，内部会对该 [name] 调用 [DatabaseManager.forceClose]（无视引用计数），
+     * 再覆盖数据库文件，因此恢复前仍持有 [RoomDatabase] 引用的旧代码不得再继续使用；恢复后
+     * 应重新 [DatabaseManager.getOrCreate] 获取新实例。
      *
      * **注意**：此方法不是线程安全的，调用方需确保恢复期间不会有其他线程访问数据库。
      *
@@ -67,8 +70,8 @@ object DbBackupHelper {
         backupFile: File,
         noinline block: DatabaseConfig.() -> Unit = {}
     ): T {
-        synchronized(DatabaseManager.lock) {
-            DatabaseManager.release(name)
+        synchronized(DatabaseManager) {
+            DatabaseManager.forceClose(name)
             val dbFile = context.getDatabasePath(name)
             copyFile(backupFile, dbFile)
             return DatabaseManager.getOrCreate(context, name, block)

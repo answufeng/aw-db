@@ -234,6 +234,10 @@ abstract class EnumConverter<T : Enum<T>>(private val enumClass: Class<T>) {
     @TypeConverter
     fun fromEnum(value: T?): String? = value?.name
 
+    /**
+     * 若库中无匹配枚举名，返回 `null`；若该列在实体中声明为非空类型，可能引发运行期或约束问题，
+     * 建表/迁移时务必保证与 [fromEnum] 写出的名称一致。
+     */
     @TypeConverter
     fun toEnum(value: String?): T? = value?.let { name ->
         enumClass.enumConstants?.find { it.name == name }

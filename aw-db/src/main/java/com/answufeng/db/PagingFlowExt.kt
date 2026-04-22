@@ -64,7 +64,9 @@ fun <T : Any> (() -> PagingSource<Int, T>).asDbResultPagingFlow(
 /**
  * 转换 [DbResult] 分页数据中的成功数据。
  *
- * 仅对成功状态的内部数据进行转换，Loading 和 Failure 状态保持不变。
+ * 当上游由 [asDbResultPagingFlow] 产生时，每项均为 [DbResult.Success]；[transform] 在 Success 上被调用，等价于
+ * 在分页项上映射领域模型。若将来扩展为可携带 [DbResult.Failure] 的流，[map] 对 Failure/Loading 的语义
+ * 与 [DbResult.map] 一致。
  *
  * ```kotlin
  * val mappedFlow = dbResultPagingFlow.mapResult { user ->

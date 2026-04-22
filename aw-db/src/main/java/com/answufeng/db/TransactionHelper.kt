@@ -2,6 +2,7 @@ package com.answufeng.db
 
 import androidx.room.RoomDatabase
 import androidx.room.withTransaction
+import kotlinx.coroutines.CancellationException
 
 /**
  * 数据库事务辅助工具，支持跨 Dao 的多步原子操作。
@@ -82,6 +83,7 @@ suspend fun <T : RoomDatabase, R> T.safeTransaction(block: suspend T.() -> R): R
     return try {
         Result.success(withTransaction { block() })
     } catch (e: Exception) {
+        if (e is CancellationException) throw e
         Result.failure(e)
     }
 }
@@ -155,7 +157,8 @@ sealed class BatchResult<out T> {
  * @param E 数据元素类型
  * @param items 要处理的数据列表
  * @param strategy 失败策略，默认 [BatchFailureStrategy.SKIP]
- * @param batchSize 分批大小，默认 0 表示不分批。设置大于 0 时，每 N 条提交一次事务，避免长事务导致 ANR
+ * @param batchSize 分批大小，默认 0 表示不分批。设置大于 0 时，每 N 条提交一次事务，避免长事务导致 ANR。
+ * 仅对 [BatchFailureStrategy.SKIP] 生效；[BatchFailureStrategy.FAIL_FAST] 要求整批在单事务中完成，若 `batchSize > 0` 将抛出 [IllegalArgumentException]。
  * @param action 对每个元素执行的操作
  * @return [BatchResult] 类型安全的批量执行结果
  *
@@ -171,7 +174,9 @@ suspend fun <T : RoomDatabase, E> T.batchExecute(
     strategy: BatchFailureStrategy = BatchFailureStrategy.SKIP,
     batchSize: Int = 0,
     action: suspend (E) -> Unit
-): BatchResult<E> = when (strategy) {
+): BatchResult<E> {
+    validateBatchExecuteParams(strategy, batchSize)
+    return when (strategy) {
     BatchFailureStrategy.SKIP -> {
         if (batchSize > 0 && items.size > batchSize) {
             var totalSuccess = 0
@@ -186,6 +191,7 @@ suspend fun <T : RoomDatabase, E> T.batchExecute(
                             action(item)
                             chunkSuccess++
                         } catch (e: Exception) {
+                            if (e is CancellationException) throw e
                             chunkFailures.add(IndexedValue(chunkOffset + index, e))
                         }
                     }
@@ -203,6 +209,7 @@ suspend fun <T : RoomDatabase, E> T.batchExecute(
                         action(item)
                         successCount++
                     } catch (e: Exception) {
+                        if (e is CancellationException) throw e
                         failures.add(IndexedValue(index, e))
                     }
                 }
@@ -219,8 +226,22 @@ suspend fun <T : RoomDatabase, E> T.batchExecute(
                     items.size
                 })
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 Result.failure(e)
             }
         )
+    }
+    }
+}
+
+/** 供 [batchExecute] 与单元测试校验 [strategy] 与 [batchSize] 的组合。 */
+@PublishedApi
+internal fun validateBatchExecuteParams(
+    strategy: BatchFailureStrategy,
+    batchSize: Int
+) {
+    require(!(strategy == BatchFailureStrategy.FAIL_FAST && batchSize > 0)) {
+        "batchExecute: FAIL_FAST cannot be combined with batchSize > 0 (would break single-transaction " +
+            "all-or-nothing semantics). Use SKIP with batching, or FAIL_FAST with batchSize = 0."
     }
 }

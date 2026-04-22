@@ -1,5 +1,6 @@
 package com.answufeng.db
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
@@ -359,5 +360,10 @@ class DbResultTest {
         val result = dbResultOf<String> { throw RuntimeException("oops") }
         assertTrue(result.isFailure)
         assertEquals("oops", (result as DbResult.Failure).error.message)
+    }
+
+    @Test(expected = CancellationException::class)
+    fun `dbResultOf rethrows CancellationException`() = runBlocking {
+        dbResultOf { throw CancellationException() }
     }
 }

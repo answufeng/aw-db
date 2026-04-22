@@ -3,21 +3,20 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?android:attr/colorBackground">
+    android:background="@color/background">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@android:color/transparent"
-        android:elevation="0dp">
+        android:background="@android:color/transparent">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:background="?android:attr/colorPrimary"
-            app:title="🗃️ aw-db 数据库库"
-            app:titleTextColor="@android:color/white"
+            android:background="?attr/colorSurface"
+            app:title="@string/title_main"
+            app:titleTextColor="@color/text_primary"
             app:navigationIcon="@drawable/ic_database" />
 
     </com.google.android.material.appbar.AppBarLayout>
@@ -31,14 +30,143 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:padding="16dp"
+            android:paddingBottom="24dp">
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="4dp">
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/divider"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Demo 状态"
+                            android:textColor="@color/text_primary"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnRefresh"
+                            style="@style/MaterialButton.Text"
+                            android:layout_width="wrap_content"
+                            android:layout_height="40dp"
+                            android:text="@string/action_refresh" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="12dp">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/label_db_name"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="12sp" />
+
+                            <TextView
+                                android:id="@+id/tvDbName"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="demo.db"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/label_user_count"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="12sp" />
+
+                            <TextView
+                                android:id="@+id/tvUserCount"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/label_flow"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="12sp" />
+
+                            <TextView
+                                android:id="@+id/tvFlowStatus"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="未开启"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tvBackupPath"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="@string/label_backup"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/divider"
+                app:strokeWidth="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -49,8 +177,8 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="📝 基本操作"
-                        android:textColor="#4CAF50"
+                        android:text="@string/section_basic"
+                        android:textColor="@color/text_primary"
                         android:textSize="18sp"
                         android:textStyle="bold"
                         android:drawablePadding="8dp"
@@ -61,7 +189,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="基础的CRUD操作，支持插入、查询、更新、删除等数据库基本功能"
-                        android:textColor="#666666"
+                        android:textColor="@color/text_secondary"
                         android:textSize="14sp"
                         android:layout_marginBottom="16dp"
                         android:lineSpacingExtra="4dp" />
@@ -71,22 +199,22 @@
                         android:layout_height="wrap_content"
                         android:orientation="horizontal">
 
-                        <Button
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnInsert"
                             style="@style/MaterialButton.Outlined"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
-                            android:text="插入用户"
+                            android:text="@string/action_insert"
                             android:layout_marginEnd="8dp" />
 
-                        <Button
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnBatchInsert"
                             style="@style/MaterialButton.Outlined"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
-                            android:text="批量插入" />
+                            android:text="@string/action_batch_insert" />
 
                     </LinearLayout>
 
@@ -96,22 +224,22 @@
                         android:orientation="horizontal"
                         android:layout_marginTop="8dp">
 
-                        <Button
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnQueryAll"
                             style="@style/MaterialButton.Outlined"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
-                            android:text="查询所有"
+                            android:text="@string/action_query_all"
                             android:layout_marginEnd="8dp" />
 
-                        <Button
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnQueryById"
                             style="@style/MaterialButton.Outlined"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
-                            android:text="ID查询" />
+                            android:text="@string/action_query_by_id" />
 
                     </LinearLayout>
 
@@ -121,22 +249,22 @@
                         android:orientation="horizontal"
                         android:layout_marginTop="8dp">
 
-                        <Button
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnUpsert"
                             style="@style/MaterialButton.Outlined"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
-                            android:text="更新/插入"
+                            android:text="@string/action_upsert"
                             android:layout_marginEnd="8dp" />
 
-                        <Button
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnCount"
                             style="@style/MaterialButton.Outlined"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
-                            android:text="统计数量" />
+                            android:text="@string/action_count" />
 
                     </LinearLayout>
 
@@ -146,22 +274,22 @@
                         android:orientation="horizontal"
                         android:layout_marginTop="8dp">
 
-                        <Button
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnInsertOrIgnore"
                             style="@style/MaterialButton.Outlined"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
-                            android:text="忽略插入"
+                            android:text="@string/action_insert_or_ignore"
                             android:layout_marginEnd="8dp" />
 
-                        <Button
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnUpdate"
                             style="@style/MaterialButton.Outlined"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
-                            android:text="更新单条" />
+                            android:text="@string/action_update" />
 
                     </LinearLayout>
 
@@ -171,22 +299,22 @@
                         android:orientation="horizontal"
                         android:layout_marginTop="8dp">
 
-                        <Button
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnDelete"
                             style="@style/MaterialButton.Outlined"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
-                            android:text="删除单条"
+                            android:text="@string/action_delete"
                             android:layout_marginEnd="8dp" />
 
-                        <Button
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnDeleteAll"
                             style="@style/MaterialButton.Outlined"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
-                            android:text="删除所有" />
+                            android:text="@string/action_delete_all" />
 
                     </LinearLayout>
 
@@ -197,8 +325,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="4dp">
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/divider"
+                app:strokeWidth="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -209,8 +339,8 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="⚡ 高级功能"
-                        android:textColor="#4CAF50"
+                        android:text="@string/section_advanced"
+                        android:textColor="@color/text_primary"
                         android:textSize="18sp"
                         android:textStyle="bold"
                         android:drawablePadding="8dp"
@@ -221,7 +351,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="事务管理、批量执行、DbResult包装、Flow观察、调试工具等高级数据库功能"
-                        android:textColor="#666666"
+                        android:textColor="@color/text_secondary"
                         android:textSize="14sp"
                         android:layout_marginBottom="16dp"
                         android:lineSpacingExtra="4dp" />
@@ -231,22 +361,22 @@
                         android:layout_height="wrap_content"
                         android:orientation="horizontal">
 
-                        <Button
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnDbResult"
                             style="@style/MaterialButton.Outlined"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
-                            android:text="DbResult"
+                            android:text="@string/action_db_result"
                             android:layout_marginEnd="8dp" />
 
-                        <Button
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnTransaction"
                             style="@style/MaterialButton.Outlined"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
-                            android:text="事务操作" />
+                            android:text="@string/action_transaction" />
 
                     </LinearLayout>
 
@@ -256,22 +386,22 @@
                         android:orientation="horizontal"
                         android:layout_marginTop="8dp">
 
-                        <Button
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnBatchExecute"
                             style="@style/MaterialButton.Outlined"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
-                            android:text="批量执行"
+                            android:text="@string/action_batch_execute"
                             android:layout_marginEnd="8dp" />
 
-                        <Button
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnObserveFlow"
                             style="@style/MaterialButton.Outlined"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
-                            android:text="Flow观察" />
+                            android:text="@string/action_observe_flow" />
 
                     </LinearLayout>
 
@@ -281,22 +411,22 @@
                         android:orientation="horizontal"
                         android:layout_marginTop="8dp">
 
-                        <Button
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnDebugHelper"
                             style="@style/MaterialButton.Outlined"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
-                            android:text="调试工具"
+                            android:text="@string/action_debug_helper"
                             android:layout_marginEnd="8dp" />
 
-                        <Button
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnPagedResult"
                             style="@style/MaterialButton.Outlined"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
-                            android:text="手动分页" />
+                            android:text="@string/action_paged_result" />
 
                     </LinearLayout>
 
@@ -306,22 +436,47 @@
                         android:orientation="horizontal"
                         android:layout_marginTop="8dp">
 
-                        <Button
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnBackup"
                             style="@style/MaterialButton.Outlined"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
-                            android:text="备份"
+                            android:text="@string/action_backup"
                             android:layout_marginEnd="8dp" />
 
-                        <Button
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnRestore"
+                            style="@style/MaterialButton.Outlined"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="@string/action_restore" />
+
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="8dp">
+
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnGetOrNull"
                             style="@style/MaterialButton.Outlined"
                             android:layout_width="0dp"
                             android:layout_height="48dp"
                             android:layout_weight="1"
-                            android:text="getOrNull" />
+                            android:text="@string/action_get_or_null"
+                            android:layout_marginEnd="8dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnOpenDbPath"
+                            style="@style/MaterialButton.Outlined"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="数据库路径" />
 
                     </LinearLayout>
 
@@ -331,8 +486,10 @@
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="4dp">
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/divider"
+                app:strokeWidth="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -343,41 +500,67 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="📋 操作日志"
-                        android:textColor="#4CAF50"
+                        android:text="@string/section_logs"
+                        android:textColor="@color/text_primary"
                         android:textSize="18sp"
                         android:textStyle="bold"
                         android:drawablePadding="8dp"
                         android:drawableStart="@drawable/ic_logs"
                         android:layout_marginBottom="12dp" />
 
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnCopyLog"
+                            style="@style/MaterialButton.Text"
+                            android:layout_width="wrap_content"
+                            android:layout_height="40dp"
+                            android:text="@string/action_copy_log"
+                            android:layout_marginEnd="8dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnShareLog"
+                            style="@style/MaterialButton.Text"
+                            android:layout_width="wrap_content"
+                            android:layout_height="40dp"
+                            android:text="@string/action_share_log" />
+
+                        <Space
+                            android:layout_width="0dp"
+                            android:layout_height="0dp"
+                            android:layout_weight="1" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnClearLog"
+                            style="@style/MaterialButton.Text"
+                            android:layout_width="wrap_content"
+                            android:layout_height="40dp"
+                            android:text="@string/action_clear_log" />
+
+                    </LinearLayout>
+
                     <ScrollView
                         android:id="@+id/logScrollView"
                         android:layout_width="match_parent"
                         android:layout_height="200dp"
-                        android:background="#F8F9FA"
+                        android:background="@color/log_bg"
                         android:padding="12dp">
 
                         <TextView
                             android:id="@+id/tvLog"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="操作日志将显示在这里...\n点击上方按钮开始测试数据库功能"
-                            android:textColor="#333333"
+                            android:text="@string/hint_logs"
+                            android:textColor="@color/text_primary"
                             android:textSize="13sp"
                             android:fontFamily="monospace"
                             android:lineSpacingExtra="4dp" />
 
                     </ScrollView>
-
-                    <Button
-                        android:id="@+id/btnClearLog"
-                        style="@style/MaterialButton.Text"
-                        android:layout_width="wrap_content"
-                        android:layout_height="48dp"
-                        android:layout_gravity="end"
-                        android:text="清除日志"
-                        android:layout_marginTop="12dp" />
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>

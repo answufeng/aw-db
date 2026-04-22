@@ -45,4 +45,19 @@ class TransactionHelperTest {
         assertEquals(BatchFailureStrategy.SKIP, BatchFailureStrategy.valueOf("SKIP"))
         assertEquals(BatchFailureStrategy.FAIL_FAST, BatchFailureStrategy.valueOf("FAIL_FAST"))
     }
+
+    @Test
+    fun `validateBatchExecuteParams allows FAIL_FAST with zero batch size`() {
+        validateBatchExecuteParams(BatchFailureStrategy.FAIL_FAST, 0)
+    }
+
+    @Test
+    fun `validateBatchExecuteParams allows SKIP with positive batch size`() {
+        validateBatchExecuteParams(BatchFailureStrategy.SKIP, 50)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `validateBatchExecuteParams rejects FAIL_FAST with positive batch size`() {
+        validateBatchExecuteParams(BatchFailureStrategy.FAIL_FAST, 10)
+    }
 }

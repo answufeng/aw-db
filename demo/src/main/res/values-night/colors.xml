@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand -->
+    <color name="primary">#818CF8</color>
+    <color name="primary_variant">#6366F1</color>
+    <color name="secondary">#22D3EE</color>
+    <color name="secondary_variant">#06B6D4</color>
+
+    <!-- Surfaces -->
+    <color name="background">#0B1220</color>
+    <color name="surface">#0F172A</color>
+
+    <!-- Semantics -->
+    <color name="error">#F87171</color>
+
+    <!-- On colors -->
+    <color name="on_primary">#0B1220</color>
+    <color name="on_secondary">#001018</color>
+    <color name="on_background">#E2E8F0</color>
+    <color name="on_surface">#E2E8F0</color>
+    <color name="on_error">#0B1220</color>
+
+    <!-- Text / lines -->
+    <color name="text_primary">#E2E8F0</color>
+    <color name="text_secondary">#94A3B8</color>
+    <color name="divider">#243045</color>
+
+    <!-- Component helpers -->
+    <color name="card_bg">#111C33</color>
+    <color name="log_bg">#0B162B</color>
+
+    <!-- Legacy aliases (keep for safety) -->
+    <color name="colorPrimary">@color/primary</color>
+    <color name="colorPrimaryDark">@color/primary_variant</color>
+    <color name="colorAccent">@color/secondary</color>
+</resources>
+

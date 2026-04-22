@@ -28,10 +28,9 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 object DatabaseManager {
 
+    /** 供 [getOrCreate] 等 public `inline` 实现访问；非稳定 ABI，勿直接使用。 */
     @PublishedApi
     internal val instances = mutableMapOf<String, ManagedDatabase<*>>()
-    @PublishedApi
-    internal val lock = Any()
 
     /**
      * 获取或创建数据库实例。
@@ -39,25 +38,37 @@ object DatabaseManager {
      * 首次调用时创建实例并设置引用计数为 1，后续调用递增引用计数。
      * 线程安全。
      *
+     * **注意**：[block] 仅在**首次**创建该 [name] 对应实例时执行；已存在实例时 [block] 会被忽略
+     * （迁移、回调等以首次成功创建时的配置为准）。
+     *
+     * **注意**：同一 [name] 必须始终使用**同一个** [RoomDatabase] 子类；若已存在实例却请求
+     * 另一种数据库类型，将抛出 [IllegalStateException]。
+     *
      * @param T 数据库类型，必须继承 [RoomDatabase]
      * @param context 任意 Context（内部自动取 applicationContext）
      * @param name 数据库文件名，同时作为实例的唯一标识
-     * @param block 可选的配置 DSL
+     * @param block 可选的配置 DSL（仅首次创建时生效）
      * @return 数据库实例
+     * @throws IllegalStateException 当 [name] 已被其他 [RoomDatabase] 类型占用时
      */
     inline fun <reified T : RoomDatabase> getOrCreate(
         context: Context,
         name: String,
         noinline block: DatabaseConfig.() -> Unit = {}
     ): T {
-        synchronized(lock) {
-            val managed = instances.getOrPut(name) {
-                val database = AwDatabase.build<T>(context, name, block)
-                ManagedDatabase(database)
+        synchronized(this) {
+            val existing = instances[name]
+            if (existing != null) {
+                checkDatabaseType(name, existing.database, T::class.java)
+                existing.refCount.incrementAndGet()
+                @Suppress("UNCHECKED_CAST")
+                return existing.database as T
             }
+            val database = AwDatabase.build<T>(context, name, block)
+            val managed = ManagedDatabase(database)
+            instances[name] = managed
             managed.refCount.incrementAndGet()
-            @Suppress("UNCHECKED_CAST")
-            return managed.database as T
+            return database
         }
     }
 
@@ -66,10 +77,7 @@ object DatabaseManager {
      *
      * 适用于只有一个数据库的简单场景，省去手动指定名称的步骤。
      *
-     * @param T 数据库类型，必须继承 [RoomDatabase]
-     * @param context 任意 Context（内部自动取 applicationContext）
-     * @param block 可选的配置 DSL
-     * @return 数据库实例
+     * @see getOrCreate 关于 [block] 与类型约束的说明同样适用
      */
     inline fun <reified T : RoomDatabase> getOrCreate(
         context: Context,
@@ -87,7 +95,7 @@ object DatabaseManager {
      * @param name 数据库文件名
      */
     fun release(name: String) {
-        synchronized(lock) {
+        synchronized(this) {
             val managed = instances[name] ?: return
             if (managed.refCount.decrementAndGet() <= 0) {
                 managed.database.close()
@@ -97,12 +105,28 @@ object DatabaseManager {
     }
 
     /**
+     * 无视引用计数，立即关闭并移除指定名称的数据库实例。
+     *
+     * 用于 [DbBackupHelper.restore] 等必须在替换数据库文件**之前**确保持有连接全部关闭的场景。
+     * 普通业务请使用 [release] 成对管理引用；滥用本方法会导致仍持有 [RoomDatabase] 引用的
+     * 代码在关闭后使用数据库而崩溃。
+     *
+     * @param name 数据库文件名（与 [getOrCreate] 中的 [name] 一致）
+     */
+    fun forceClose(name: String) {
+        synchronized(this) {
+            val managed = instances.remove(name) ?: return
+            managed.database.close()
+        }
+    }
+
+    /**
      * 关闭所有数据库实例并清空缓存。
      *
      * 通常在应用退出或测试清理时调用。
      */
     fun closeAll() {
-        synchronized(lock) {
+        synchronized(this) {
             val errors = mutableListOf<Exception>()
             instances.values.forEach { managed ->
                 try {
@@ -119,21 +143,29 @@ object DatabaseManager {
     }
 
     /**
-     * 获取已存在的数据库实例，不创建新实例。
+     * 获取已存在的数据库实例，不创建新实例；Java 或无法使用内联的调用方可使用
+     * [getOrNull] 与 [ofClass] 重载。
      *
-     * 适用于只想使用已初始化的数据库而不想触发创建的场景。
-     * 如果数据库尚未初始化，返回 null。
-     *
-     * @param T 数据库类型，必须继承 [RoomDatabase]
-     * @param name 数据库文件名
-     * @return 数据库实例，如果未初始化则返回 null
+     * @param ofClass 期望的 [RoomDatabase] 子类
+     * @return 实例，若未初始化则返回 null
+     * @throws IllegalStateException 当 [name] 已存在实例且类型与 [ofClass] 不一致时
      */
-    @Suppress("UNCHECKED_CAST")
-    fun <T : RoomDatabase> getOrNull(name: String): T? {
-        synchronized(lock) {
-            return instances[name]?.database as? T
+    fun <T : RoomDatabase> getOrNull(name: String, ofClass: Class<T>): T? {
+        synchronized(this) {
+            val managed = instances[name] ?: return null
+            checkDatabaseType(name, managed.database, ofClass)
+            @Suppress("UNCHECKED_CAST")
+            return managed.database as T
         }
     }
+
+    /**
+     * 获取已存在的数据库实例，不创建新实例。
+     *
+     * @see getOrNull(String, Class)
+     */
+    inline fun <reified T : RoomDatabase> getOrNull(name: String): T? =
+        getOrNull(name, T::class.java)
 
     /**
      * 检查指定名称的数据库是否正在被管理。
@@ -142,7 +174,7 @@ object DatabaseManager {
      * @return 是否存在该数据库的管理实例
      */
     fun isManaged(name: String): Boolean {
-        synchronized(lock) {
+        synchronized(this) {
             return instances.containsKey(name)
         }
     }
@@ -156,20 +188,28 @@ object DatabaseManager {
      * @return 引用计数，如果数据库未被管理则返回 0
      */
     fun getReferenceCount(name: String): Int {
-        synchronized(lock) {
+        synchronized(this) {
             return instances[name]?.refCount?.get() ?: 0
         }
     }
 
-    /**
-     * 封装被管理的数据库实例及其引用计数。
-     *
-     * @param database Room 数据库实例
-     * @param refCount 当前引用计数，归零时数据库实例被关闭并移除
-     */
     @PublishedApi
     internal class ManagedDatabase<T : RoomDatabase>(
         val database: T,
         val refCount: AtomicInteger = AtomicInteger(0)
     )
+}
+
+@PublishedApi
+internal fun checkDatabaseType(
+    name: String,
+    database: RoomDatabase,
+    expected: Class<out RoomDatabase>
+) {
+    if (!expected.isInstance(database)) {
+        throw IllegalStateException(
+            "Database name '$name' is already in use as ${database::class.java.name}, " +
+                "but ${expected.name} was requested. Use a distinct database name or the same type."
+        )
+    }
 }
