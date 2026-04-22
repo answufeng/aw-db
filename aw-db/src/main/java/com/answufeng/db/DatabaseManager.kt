@@ -2,6 +2,7 @@ package com.answufeng.db
 
 import android.content.Context
 import androidx.room.RoomDatabase
+import java.io.Closeable
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -25,6 +26,17 @@ import java.util.concurrent.atomic.AtomicInteger
  * // 关闭所有数据库实例
  * DatabaseManager.closeAll()
  * ```
+ *
+ * ### 作用域内自动 release（推荐短生命周期场景）
+ *
+ * ```kotlin
+ * DatabaseManager.acquireScoped<AppDatabase>(context, "app.db").use { handle ->
+ *     handle.database.someDao().query()
+ * }
+ * ```
+ *
+ * 每调用一次 [acquireScoped] 会使引用计数 +1，[ScopedDatabaseHandle.close]（或 `use` 结束）时 -1；
+ * 可与嵌套 `use` 安全配对。
  */
 object DatabaseManager {
 
@@ -193,11 +205,39 @@ object DatabaseManager {
         }
     }
 
+    /**
+     * 获取数据库并返回可在 `use { }` 结束时自动 [release] 的句柄。
+     *
+     * @see ScopedDatabaseHandle
+     */
+    inline fun <reified T : RoomDatabase> acquireScoped(
+        context: Context,
+        name: String,
+        noinline block: DatabaseConfig.() -> Unit = {}
+    ): ScopedDatabaseHandle<T> {
+        val db = getOrCreate<T>(context, name, block)
+        return ScopedDatabaseHandle(name, db)
+    }
+
     @PublishedApi
     internal class ManagedDatabase<T : RoomDatabase>(
         val database: T,
         val refCount: AtomicInteger = AtomicInteger(0)
     )
+}
+
+/**
+ * [DatabaseManager.acquireScoped] 返回的句柄；实现 [Closeable]，便于 Kotlin `use { }`。
+ */
+class ScopedDatabaseHandle<T : RoomDatabase> @PublishedApi internal constructor(
+    private val name: String,
+    /** 当前持有的 [RoomDatabase] 实例（与 [DatabaseManager.getOrCreate] 返回的相同）。 */
+    val database: T
+) : Closeable {
+
+    override fun close() {
+        DatabaseManager.release(name)
+    }
 }
 
 @PublishedApi

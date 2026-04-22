@@ -6,14 +6,14 @@ Room 数据库工具库，提供 DSL 风格的数据库构建器、通用 DAO、
 
 ## 特性
 
-- 🏗️ **DSL 数据库构建器** — 链式配置迁移、回调、日志模式、预打包数据库、自定义 Executor 等
-- 📦 **通用 BaseDao** — 继承即获得完整 CRUD + Upsert 操作，批量操作自带 `@Transaction` 保证原子性
-- 🔒 **事务辅助** — `withTx`、`safeTransaction`、`batchExecute`（类型安全的 `BatchResult` 密封类，支持 SKIP/FAIL_FAST 策略）
-- 🔄 **DbResult 密封类** — 统一 Loading/Success/Failure 状态，支持 `flatMap`/`mapFailure`/`filter`/`combineDbResults` 等函数式操作
-- 🔀 **Migration DSL** — 简化迁移和回调创建，告别样板代码
-- 🧩 **类型转换器** — Date、Instant、LocalDateTime、LocalDate、List、Set、Map、Boolean、ByteArray、Enum 开箱即用
-- 📄 **Paging 3 集成** — `asPagingFlow()`/`asDbResultPagingFlow()` 直接对接 AndroidX Paging
-- 🏛️ **数据库生命周期管理** — `DatabaseManager` 引用计数单例，防止多实例问题
+- **DSL 数据库构建器** — 链式配置迁移、回调、日志模式、预打包数据库、自定义 Executor 等
+- **通用 BaseDao** — 继承即获得完整 CRUD + Upsert 操作，批量操作自带 `@Transaction` 保证原子性
+- **事务辅助** — `withTx`、`safeTransaction`、`batchExecute`（类型安全的 `BatchResult` 密封类，支持 SKIP/FAIL_FAST 策略）
+- **DbResult 密封类** — 统一 Loading/Success/Failure 状态，支持 `flatMap`/`mapFailure`/`filter`/`combineDbResults` 等函数式操作
+- **Migration DSL** — 简化迁移和回调创建，告别样板代码
+- **类型转换器** — Date、Instant、LocalDateTime、LocalDate、List、Set、Map、Boolean、ByteArray、Enum 开箱即用
+- **Paging 3 集成** — `asPagingFlow()`/`asDbResultPagingFlow()` 直接对接 AndroidX Paging
+- **数据库生命周期管理** — `DatabaseManager` 引用计数单例；支持 `acquireScoped` + `use { }` 自动配对 `release`
 
 ## 环境要求
 

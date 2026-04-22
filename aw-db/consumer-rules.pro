@@ -43,6 +43,7 @@
 
 # 库公开 API — 保持可访问性（反射/调试场景）
 -keep class com.answufeng.db.DatabaseManager { *; }
+-keep class com.answufeng.db.ScopedDatabaseHandle { *; }
 -keep class com.answufeng.db.AwDatabase { *; }
 -keep class com.answufeng.db.DatabaseConfig { *; }
 -keep class com.answufeng.db.BaseDao { *; }
