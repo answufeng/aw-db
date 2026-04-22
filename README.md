@@ -40,7 +40,7 @@ Room 数据库工具库，提供 DSL 风格的数据库构建器、通用 DAO、
 ## 工程品质与发版检查
 
 - **CI**：[`.github/workflows/ci.yml`](.github/workflows/ci.yml) — `assembleRelease`、`ktlintCheck`、`lintRelease`、`:demo:assembleRelease`。
-- **本地建议**：`./gradlew :aw-db:assembleRelease :aw-db:ktlintCheck :aw-db:lintRelease :demo:assembleRelease`
+- **本地建议**：`./gradlew :aw-db:assembleRelease :aw-db:ktlintCheck :aw-db:lintRelease :demo:assembleRelease`（需 **JDK 17+** 以构建 Android Gradle Plugin 工程。）
 - **演示**：[demo/DEMO_MATRIX.md](demo/DEMO_MATRIX.md)；demo 工具栏 **「演示清单」**。
 - **上线前**：必须为每个 DB 版本准备**正式迁移**；避免在生产使用 `fallbackToDestructiveMigration()`；大表迁移在真机低存储与后台限制下各验一次。
 
@@ -525,7 +525,7 @@ abstract class UserDao : BaseDao<User>() {
     abstract suspend fun count(): Int
 }
 
-// 使用
+// 使用（page 须 >= 0，pageSize 须 > 0）
 val page = 0
 val pageSize = 20
 val items = userDao.getPage(pageSize, page * pageSize)
@@ -734,12 +734,6 @@ userDao.observeAll().asDbResultLiveDataWithLoading(timeoutInMs = 10_000L)
 
 aw-db 已通过 `consumer-rules.pro` 自动配置了必要的混淆规则，宿主项目无需额外配置。如果你的应用开启了 `minifyEnabled`，库中的 `DbResult`、`BatchResult`、TypeConverter 等类会被自动保留。
 
-## 更新日志
-
-详见 [CHANGELOG.md](CHANGELOG.md)。
-
 ## 许可证
 
 Apache License 2.0，详见 [LICENSE](LICENSE)。
-
-# Last updated: 2026年 4月 21日

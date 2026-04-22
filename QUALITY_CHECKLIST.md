@@ -26,3 +26,6 @@ library 的一致性檢查。
 - `consumer-rules.pro`：僅保留反射、序列化、註解處理必要入口。
 - 避免整包 `-keep ... { *; }`，優先精準 `-keepclassmembers`。
 - 移除不存在類別規則、錯誤語法與過寬 `-dontwarn`。
+
+## 6. CI
+- 發前至少執行：`./gradlew :aw-db:assembleRelease :aw-db:ktlintCheck :aw-db:lintRelease`（需 JDK 17+）。
