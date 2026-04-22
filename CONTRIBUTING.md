@@ -37,3 +37,7 @@
 ./gradlew :aw-db:lintRelease
 ./gradlew :demo:assembleRelease
 ```
+
+## 发版前补充检查（R8）
+
+Room + kotlinx.serialization 反射边界依赖 consumer rules；发版前务必 `assembleRelease` + demo。若收紧 keep，用 `-printusage` 审查并回归迁移与 `AwConverters`。

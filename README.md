@@ -31,12 +31,27 @@ Room 数据库工具库，提供 DSL 风格的数据库构建器、通用 DAO、
 | Paging 3 | `room-paging` 随库 `api` 传递；宿主需与自身 `paging-runtime` 版本兼容 |
 | 预打包 DB / 迁移 | 由 `DatabaseConfig` / Migration DSL 配置；请在真机低存储场景测迁移 |
 
+## 文档导读
+
+1. [工程品质与发版检查](#工程品质与发版检查) → [快速开始](#快速开始) → [API 文档](#api-文档)  
+2. 可选加密：[SQLCipher（可选集成）](#sqlcipher可选集成)  
+3. 演示：[demo/DEMO_MATRIX.md](demo/DEMO_MATRIX.md)（含 **推荐手测**）
+
 ## 工程品质与发版检查
 
 - **CI**：[`.github/workflows/ci.yml`](.github/workflows/ci.yml) — `assembleRelease`、`ktlintCheck`、`lintRelease`、`:demo:assembleRelease`。
 - **本地建议**：`./gradlew :aw-db:assembleRelease :aw-db:ktlintCheck :aw-db:lintRelease :demo:assembleRelease`
 - **演示**：[demo/DEMO_MATRIX.md](demo/DEMO_MATRIX.md)；demo 工具栏 **「演示清单」**。
 - **上线前**：必须为每个 DB 版本准备**正式迁移**；避免在生产使用 `fallbackToDestructiveMigration()`；大表迁移在真机低存储与后台限制下各验一次。
+
+## SQLCipher（可选集成）
+
+本库 **默认不内置** SQLCipher（避免强制引入 native 与体积暴涨）。若业务需要 **文件级加密**：
+
+1. 在宿主添加官方 **`android-database-sqlcipher`**（或当前维护的 SQLCipher Android 发行版）依赖，版本与 NDK/ABI 需自行评估。  
+2. 使用 Room 支持的 **`SupportFactory`** / 加密 `SupportSQLiteOpenHelper.Factory` 包装（参见 AndroidX Room 文档「SQLCipher」小节）。  
+3. **密钥管理**：密钥勿硬编码；轮换需完整迁移计划；与 `DatabaseManager` 多实例路径一并测试。  
+4. **aw-db 角色**：继续负责 DSL、`DbResult`、事务与迁移编排；加密在 **openHelperFactory** 一层接入即可。
 
 ## 引入
 
