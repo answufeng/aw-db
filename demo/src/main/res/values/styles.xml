@@ -1,5 +1,5 @@
 <resources>
-    <style name="Theme.AwDbdemo" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+    <style name="Theme.AwDbdemo" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">@color/primary</item>
         <item name="colorPrimaryVariant">@color/primary_variant</item>
         <item name="colorOnPrimary">@color/on_primary</item>

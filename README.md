@@ -4,81 +4,33 @@
 
 轻量 **Room** 工具库：DSL 建库、通用 `BaseDao`、事务与批量辅助、`DbResult` 包装、类型转换、Paging 扩展与 `DatabaseManager` 生命周期。面向 **传统 XML** 开发即可使用（不依赖 Compose）。
 
----
-
-## 目录
-
-| 块 | 说明 |
-|----|------|
-| [特性](#特性) | 能力一览 |
-| [环境](#环境) | minSdk、Kotlin、Room、行为说明 |
-| [安装](#安装) | Gradle / JitPack、`ksp` 说明 |
-| [快速开始](#快速开始) | 三步可跑通 |
-| [演示应用](#演示应用) | `demo` 与 [DEMO_MATRIX](demo/DEMO_MATRIX.md) |
-| [参考手册](#参考手册) | 速览 + 可折叠的完整代码与表格 |
-| [工程与发版](#工程与发版) | CI、本地命令、上线注意 |
-| [SQLCipher（可选）](#sqlcipher可选) | 文件加密接入要点 |
-| [最佳实践](#最佳实践) | 协程、单例、迁移、Flow、分页、类型转换性能 |
-| [常见问题](#常见问题) | FAQ |
-| [混淆](#混淆) | 宿主 R8/ProGuard |
-| [许可证](#许可证) | Apache-2.0 |
+如果你只想最快接入并完成第一个 CRUD / Flow 观察，直接看下面的「5 分钟上手」即可；其它内容都可以后置按需查阅。
 
 ---
 
-## 特性
+## 5 分钟上手（最小接入）
 
-- **DSL 建库** — 迁移、回调、日志模式、预打包 DB、自定义 Executor 等
-- **BaseDao** — CRUD + Upsert，批量方法带 `@Transaction`
-- **事务** — `withTx`、`safeTransaction`、`batchExecute`（`BatchResult` + SKIP / FAIL_FAST）
-- **DbResult** — Loading / Success / Failure，含 `map`、`combineDbResults`、Flow / LiveData 扩展
-- **Migration DSL** — `migration { }`、onCreate / onOpen / 销毁式迁移回调
-- **AwConverters** — Date、java.time、List/Set/Map（JSON）、Boolean、ByteArray、`EnumConverter`
-- **Paging 3** — `asPagingFlow`、`asDbResultPagingFlow`、`mapResult`（需宿主 `paging-runtime` 兼容）
-- **DatabaseManager** — 按文件名引用计数；`acquireScoped` + `use` 成对 `release`
-
----
-
-## 环境
-
-| 项 | 要求 |
-|----|------|
-| minSdk | 24+ |
-| 语言 / Room | Kotlin 2.0+，Room 2.6.1+（与库内一致） |
-| 构建本仓库 | **JDK 17+**；`demo` 用 compileSdk 35 / targetSdk 35 做验证（库不限定宿主 targetSdk） |
-
-| 能力 | minSdk 24 时 |
-|------|----------------|
-| Room / SQLite | 标准 API，无额外反射壳 |
-| `kotlinx.serialization`（`AwConverters` 内 JSON） | 与库内 BOM 对齐升级 |
-| Paging 3 | `room-paging` 经 `api` 传递，宿主自管 `paging-runtime` 版本 |
-| 预打包 DB / 迁移 | 在真机**低存储**下至少测一次大迁移 |
-
----
-
-## 安装
-
-`settings.gradle.kts` 增加 JitPack；`app` 模块：
+### 1) 添加依赖（JitPack）
 
 ```kotlin
 // settings.gradle.kts
 dependencyResolutionManagement {
-    repositories { maven { url = uri("https://jitpack.io") } }
+    repositories {
+        maven { url = uri("https://jitpack.io") }
+    }
 }
 
 // app/build.gradle.kts
 dependencies {
-    implementation("com.github.answufeng:aw-db:1.0.0")
+    implementation("com.github.answufeng:aw-db:1.0.1")
     ksp("androidx.room:room-compiler:2.6.1")
 }
 ```
 
-> aw-db 以 `api` 带上 Room、Lifecycle 等，一般不必再写 `room-runtime` / `room-ktx`；**必须**加 `ksp("androidx.room:room-compiler")` 以处理 `@Database` / `@Dao`。
+> `implementation` 的版本号与 Git / JitPack 的 tag 一致（上例为 `1.0.1`）。  
+> aw-db 以 `api` 传递 Room、Lifecycle 等，一般不必再显式依赖 `room-runtime` / `room-ktx`；但**必须**加 `ksp("androidx.room:room-compiler")` 以处理 `@Database` / `@Dao`。
 
----
-
-## 快速开始
-
-**1. 实体、DAO、Database**
+### 2) 定义 Entity / Dao / Database（Room 标准写法）
 
 ```kotlin
 @Entity
@@ -92,6 +44,9 @@ data class User(
 abstract class UserDao : BaseDao<User>() {
     @Query("SELECT * FROM User")
     abstract suspend fun getAll(): List<User>
+
+    @Query("SELECT * FROM User")
+    abstract fun observeAll(): kotlinx.coroutines.flow.Flow<List<User>>
 }
 
 @Database(entities = [User::class], version = 1)
@@ -101,21 +56,21 @@ abstract class AppDatabase : RoomDatabase() {
 }
 ```
 
-**2. 打开数据库**
+### 3) 打开数据库并完成一次读写 / Flow 观察
 
 ```kotlin
+// 打开（推荐：DatabaseManager 管生命周期）
 val db = DatabaseManager.getOrCreate<AppDatabase>(context, "app.db") {
-    addMigrations(MIGRATION_1_2)
     setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
 }
-DatabaseManager.release("app.db") // 不再使用时
-```
 
-**3. 读写与观察**
-
-```kotlin
+// 写
 val id = db.userDao().insert(User(name = "张三", age = 25))
+
+// 读
 val users = db.userDao().getAll()
+
+// 观察（Flow -> DbResult：带 Loading/Success/Failure）
 db.userDao().observeAll()
     .asDbResultWithLoading()
     .collect { r ->
@@ -123,7 +78,48 @@ db.userDao().observeAll()
             .onSuccess { showData(it) }
             .onFailure { showError(it) }
     }
+
+// 不再使用时（如进程结束、或你明确需要提前 close）
+DatabaseManager.release("app.db")
 ```
+
+---
+
+## 目录（按常见需求跳转）
+
+| 想做什么 | 跳转到 |
+|----------|--------|
+| 最短时间跑通依赖与第一个 CRUD/Flow | [5 分钟上手（最小接入）](#5-分钟上手最小接入) · [环境要求](#环境要求) |
+| 能力列表 / 选型判断 | [功能概览](#功能概览) |
+| DSL 建库、BaseDao、事务、Converter、Paging、DatabaseManager | [参考手册](#参考手册) |
+| Demo 对照有哪些页面/按钮可手测 | [演示应用](#演示应用) |
+| 本地构建、CI、发版前检查 | [本仓库与工程检查](#本仓库与工程检查) |
+| SQLCipher（可选） | [SQLCipher（可选）](#sqlcipher可选) |
+| FAQ、混淆 | [常见问题](#常见问题) · [混淆配置](#混淆配置) |
+
+---
+
+## 环境要求
+
+| 项 | 最低版本 |
+|----|----------|
+| Android minSdk | 24+ |
+| Kotlin | 2.0+ |
+| Room | 2.6.1+（与库内一致） |
+| 构建本仓库 | **JDK 17+**；`demo` 用 compileSdk 35 / targetSdk 35 做验证（库不限定宿主 targetSdk） |
+
+---
+
+## 功能概览
+
+- **DSL 建库**：迁移、回调、WAL、预打包 DB、自定义 Executor、多进程 invalidation 等
+- **BaseDao**：CRUD + Upsert，批量方法带 `@Transaction`
+- **事务**：`withTx`、`safeTransaction`、`batchExecute`（`BatchResult` + SKIP / FAIL_FAST）
+- **DbResult**：Loading / Success / Failure，含 `map`、`combineDbResults`、Flow / LiveData 扩展
+- **Migration DSL**：`migration(…) { }`、onCreate / onOpen / 销毁式迁移回调
+- **AwConverters**：Date、java.time、List/Set/Map（JSON）、Boolean、ByteArray、`EnumConverter`
+- **Paging 3**：`asPagingFlow`、`asDbResultPagingFlow`、`mapResult`（宿主自管 `paging-runtime` 版本）
+- **DatabaseManager**：按文件名引用计数；`acquireScoped` + `use` 成对 `release`
 
 ---
 
@@ -266,7 +262,7 @@ DatabaseManager.release("app.db")
 
 ---
 
-## 工程与发版
+## 本仓库与工程检查
 
 | 项 | 内容 |
 |----|------|
@@ -316,7 +312,7 @@ userDao.observeAll()
 
 ---
 
-## 混淆
+## 混淆配置
 
 `consumer-rules.pro` 会随 aar 注入宿主；`minifyEnabled true` 时一般无需再抄 `DbResult` / `BatchResult` / Converter 等规则。若 R8 仍报缺失，再按堆栈补 `-keep`（避免整包 `keep`）。
 
