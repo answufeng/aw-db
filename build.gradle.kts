@@ -6,3 +6,9 @@ plugins {
     alias(libs.plugins.kotlinx.serialization) apply false
     alias(libs.plugins.ktlint) apply false
 }
+
+// JitPack calls `./gradlew publishToMavenLocal` at the root project.
+// In a multi-module setup, forward that to the library module publication.
+tasks.register("publishToMavenLocal") {
+    dependsOn(":aw-db:publishToMavenLocal")
+}

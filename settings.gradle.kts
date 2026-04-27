@@ -7,6 +7,17 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
+
+    // JitPack occasionally fails to resolve the Gradle plugin marker artifact for
+    // org.jetbrains.kotlin.plugin.serialization. Mapping to the actual Kotlin plugin
+    // module makes plugin resolution deterministic across repositories/mirrors.
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == "org.jetbrains.kotlin.plugin.serialization") {
+                useModule("org.jetbrains.kotlin:kotlin-serialization:${requested.version}")
+            }
+        }
+    }
 }
 
 dependencyResolutionManagement {
