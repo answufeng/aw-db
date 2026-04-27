@@ -17,7 +17,8 @@ pluginManagement {
                 useModule("org.jetbrains.kotlin:kotlin-serialization:${requested.version}")
             }
             if (requested.id.id == "com.google.devtools.ksp") {
-                useModule("com.google.devtools.ksp:com.google.devtools.ksp.gradle.plugin:${requested.version}")
+                // The plugin marker POM may fail to resolve on JitPack; map to the real Gradle plugin JAR.
+                useModule("com.google.devtools.ksp:symbol-processing-gradle-plugin:${requested.version}")
             }
         }
     }
