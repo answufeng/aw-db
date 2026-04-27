@@ -16,6 +16,9 @@ pluginManagement {
             if (requested.id.id == "org.jetbrains.kotlin.plugin.serialization") {
                 useModule("org.jetbrains.kotlin:kotlin-serialization:${requested.version}")
             }
+            if (requested.id.id == "com.google.devtools.ksp") {
+                useModule("com.google.devtools.ksp:com.google.devtools.ksp.gradle.plugin:${requested.version}")
+            }
         }
     }
 }
