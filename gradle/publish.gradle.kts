@@ -7,9 +7,9 @@ extensions.configure<org.gradle.api.publish.PublishingExtension> {
                 from(components["release"])
             }
 
-            groupId = "com.github.answufeng"
+            groupId = project.group.toString()
             artifactId = "aw-db"
-            version = property("VERSION_NAME")?.toString() ?: "1.0.0"
+            version = project.version.toString()
 
             pom {
                 name.set("aw-db")

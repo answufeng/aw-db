@@ -12,3 +12,11 @@ plugins {
 tasks.register("publishToMavenLocal") {
     dependsOn(":aw-db:publishToMavenLocal")
 }
+
+// Let JitPack pass -Pgroup and -Pversion to control publication coordinates.
+// Defaults are kept for local/dev usage.
+allprojects {
+    group = (findProperty("group") as String?)?.takeIf { it.isNotBlank() } ?: "com.github.answufeng"
+    version = (findProperty("version") as String?)?.takeIf { it.isNotBlank() } ?: (findProperty("VERSION_NAME") as String?)
+    ?: "1.0.0"
+}
