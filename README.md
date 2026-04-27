@@ -22,12 +22,12 @@ dependencyResolutionManagement {
 
 // app/build.gradle.kts
 dependencies {
-    implementation("com.github.answufeng:aw-db:1.0.1")
+    implementation("com.github.answufeng:aw-db:1.0.5")
     ksp("androidx.room:room-compiler:2.6.1")
 }
 ```
 
-> `implementation` 的版本号与 Git / JitPack 的 tag 一致（上例为 `1.0.1`）。  
+> `implementation` 的版本号与 Git / JitPack 的 tag 一致（上例为 `1.0.5`）。  
 > aw-db 以 `api` 传递 Room、Lifecycle 等，一般不必再显式依赖 `room-runtime` / `room-ktx`；但**必须**加 `ksp("androidx.room:room-compiler")` 以处理 `@Database` / `@Dao`。
 
 ### 2) 定义 Entity / Dao / Database（Room 标准写法）
