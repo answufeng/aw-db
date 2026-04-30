@@ -120,6 +120,8 @@ DatabaseManager.release("app.db")
 - **AwConverters**：Date、java.time、List/Set/Map（JSON）、Boolean、ByteArray、`EnumConverter`
 - **Paging 3**：`asPagingFlow`、`asDbResultPagingFlow`、`mapResult`（宿主自管 `paging-runtime` 版本）
 - **DatabaseManager**：按文件名引用计数；`acquireScoped` + `use` 成对 `release`
+- **DbBackupHelper**：备份/恢复、备份验证（SQLite 文件头校验）、元数据（时间戳/版本号）
+- **DbPerformanceMonitor**：慢查询监控，实现 `RoomDatabase.QueryCallback`，可配阈值与监听器
 
 ---
 
@@ -166,6 +168,7 @@ val db = AwDatabase.build<AppDatabase>(context, "app.db") {
     setTransactionExecutor(Executors.newSingleThreadExecutor())
     // enableMultiInstanceInvalidation()  // 多进程同库时
     // allowMainThreadQueries()           // 仅调试用
+    // setQueryCallback(DbPerformanceMonitor)  // 慢查询监控
 }
 ```
 
@@ -259,6 +262,44 @@ DatabaseManager.release("app.db")
 ```
 
 </details>
+
+### 备份与恢复
+
+```kotlin
+// 备份（带元数据）
+val backupFile = File(exportDir, "app.db.bak")
+DbBackupHelper.backupWithMetadata(db, backupFile)
+
+// 验证备份文件
+if (DbBackupHelper.verifyBackup(backupFile)) {
+    // 读取元数据
+    val meta = DbBackupHelper.readBackupMetadata(backupFile)
+    println("备份时间: ${meta?.timestamp}, 版本: ${meta?.version}")
+}
+
+// 恢复
+val restoredDb = DbBackupHelper.restore<AppDatabase>(context, "app.db", backupFile)
+```
+
+### 慢查询监控
+
+```kotlin
+// 启用监控（阈值 500ms）
+DbPerformanceMonitor.enable(thresholdMs = 500L)
+
+// 添加监听器
+DbPerformanceMonitor.addListener(object : DbPerformanceListener {
+    override fun onQueryExecuted(sql: String, durationMs: Long) { /* 所有查询 */ }
+    override fun onSlowQuery(sql: String, durationMs: Long) {
+        Log.w("DB", "慢查询 ${durationMs}ms: $sql")
+    }
+})
+
+// 在 DatabaseConfig 中注册
+AwDatabase.build<AppDatabase>(context, "app.db") {
+    setQueryCallback(DbPerformanceMonitor)
+}
+```
 
 ---
 

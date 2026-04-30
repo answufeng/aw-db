@@ -102,6 +102,7 @@ class DatabaseConfig {
     private var queryExecutor: Executor? = null
     private var transactionExecutor: Executor? = null
     private var multiInstanceInvalidation: Boolean = false
+    private var queryCallback: RoomDatabase.QueryCallback? = null
 
     /** 添加数据库迁移。 */
     fun addMigrations(vararg migration: Migration) {
@@ -174,6 +175,10 @@ class DatabaseConfig {
         multiInstanceInvalidation = true
     }
 
+    fun setQueryCallback(callback: RoomDatabase.QueryCallback) {
+        queryCallback = callback
+    }
+
     @PublishedApi
     internal fun <T : RoomDatabase> apply(builder: RoomDatabase.Builder<T>) {
         if (migrations.isNotEmpty()) {
@@ -207,6 +212,9 @@ class DatabaseConfig {
         }
         if (multiInstanceInvalidation) {
             builder.enableMultiInstanceInvalidation()
+        }
+        queryCallback?.let {
+            builder.setQueryCallback(it, java.util.concurrent.Executors.newSingleThreadExecutor())
         }
     }
 }
