@@ -1,6 +1,7 @@
 package com.answufeng.db
 
 import android.util.Base64
+import android.util.Log
 import androidx.room.TypeConverter
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
@@ -207,10 +208,17 @@ object AwConverters {
     fun booleanToInt(value: Boolean?): Int? = value?.let { if (it) 1 else 0 }
 
     @TypeConverter
-    fun fromBase64(value: String?): ByteArray? = value?.let { Base64.decode(it, Base64.DEFAULT) }
+    fun fromBase64(value: String?): ByteArray? {
+        if (value.isNullOrBlank()) return null
+        return try {
+            Base64.decode(value, Base64.NO_WRAP)
+        } catch (e: IllegalArgumentException) {
+            throw IllegalArgumentException("Invalid Base64 for ByteArray column: ${value.take(64)}...", e)
+        }
+    }
 
     @TypeConverter
-    fun byteArrayToBase64(value: ByteArray?): String? = value?.let { Base64.encodeToString(it, Base64.NO_PADDING) }
+    fun byteArrayToBase64(value: ByteArray?): String? = value?.let { Base64.encodeToString(it, Base64.NO_WRAP) }
 }
 
 /**
@@ -239,7 +247,15 @@ abstract class EnumConverter<T : Enum<T>>(private val enumClass: Class<T>) {
      * 建表/迁移时务必保证与 [fromEnum] 写出的名称一致。
      */
     @TypeConverter
-    fun toEnum(value: String?): T? = value?.let { name ->
-        enumClass.enumConstants?.find { it.name == name }
+    fun toEnum(value: String?): T? {
+        if (value.isNullOrBlank()) return null
+        val found = enumClass.enumConstants?.find { it.name == value }
+        if (found == null) {
+            Log.w(
+                "AwConverters",
+                "Unknown enum value for ${enumClass.simpleName} in DB column: $value (Room will see null; avoid non-null entity fields without migration)"
+            )
+        }
+        return found
     }
 }

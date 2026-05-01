@@ -167,15 +167,16 @@ suspend fun <T : RoomDatabase, E> T.batchExecute(
         } else {
             var successCount = 0
             val failures = mutableListOf<IndexedValue<Throwable>>()
-            withTransaction {
-                items.forEachIndexed { index, item ->
-                    try {
+            // SKIP：每條獨立事務，避免單一事務內某條失敗後 SQLite 後續語句不可用
+            items.forEachIndexed { index, item ->
+                try {
+                    withTransaction {
                         action(item)
-                        successCount++
-                    } catch (e: Exception) {
-                        if (e is CancellationException) throw e
-                        failures.add(IndexedValue(index, e))
                     }
+                    successCount++
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    failures.add(IndexedValue(index, e))
                 }
             }
             BatchResult.Skipped(successCount, items.size - successCount, failures)

@@ -77,6 +77,10 @@ sealed class DbResult<out T> {
         else -> this
     }
 
+    /**
+     * 在 [Success] 上过滤；谓词为 `false` 时变为 [Failure]（[NoSuchElementException]），与集合 [filter] 不同。
+     * [Loading] / [Failure] 原样返回。
+     */
     inline fun filter(predicate: (T) -> Boolean): DbResult<T> = when (this) {
         is Success -> if (predicate(data)) this else Failure(NoSuchElementException("Predicate not satisfied"))
         else -> this

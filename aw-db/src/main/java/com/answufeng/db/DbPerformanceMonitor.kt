@@ -3,6 +3,9 @@ package com.answufeng.db
 import androidx.room.RoomDatabase
 
 interface DbPerformanceListener {
+    /**
+     * @param durationMs 查詢耗時毫秒；若為 `-1` 表示目前實作僅記錄 SQL（Room QueryCallback 無可靠耗時鉤子）。
+     */
     fun onQueryExecuted(sql: String, durationMs: Long)
 
     fun onSlowQuery(sql: String, durationMs: Long) {}
@@ -20,7 +23,6 @@ object DbPerformanceMonitor : RoomDatabase.QueryCallback {
     private val listeners =
         java.util.concurrent.CopyOnWriteArrayList<DbPerformanceListener>()
 
-    private val queryStartTimes = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private var queryCounter = 0L
 
     fun enable(thresholdMs: Long = 500L) {
@@ -48,23 +50,12 @@ object DbPerformanceMonitor : RoomDatabase.QueryCallback {
 
     override fun onQuery(sql: String, bindArgs: List<Any?>) {
         if (!enabled) return
-        val key = "${queryCounter++}"
-        queryStartTimes[key] = System.nanoTime()
-    }
-
-    internal fun onQueryCompleted(sql: String) {
-        if (!enabled) return
-        val now = System.nanoTime()
-        val entry = queryStartTimes.entries.firstOrNull() ?: return
-        queryStartTimes.remove(entry.key)
-        val durationMs = (now - entry.value) / 1_000_000
+        queryCounter++
+        // Room 的 QueryCallback 僅提供「即將執行」的 SQL，無法在此取得可靠耗時；
+        // 先前使用未閉環的 map 會造成內存洩漏。此處改為僅分發 SQL 記錄，耗時傳 -1。
+        val durationMs = -1L
         for (l in listeners) {
             l.onQueryExecuted(sql, durationMs)
-        }
-        if (durationMs > slowQueryThresholdMs) {
-            for (l in listeners) {
-                l.onSlowQuery(sql, durationMs)
-            }
         }
     }
 }
