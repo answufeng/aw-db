@@ -2,21 +2,23 @@
     <string name="app_name">aw-db Demo</string>
     <string name="title_main">aw-db Demo</string>
     <string name="subtitle_main">按能力分区手测</string>
-    <string name="stats_placeholder">demo.db · 用户 — · Flow 关</string>
-    <string name="stats_format">%1$s · 用户 %2$s · %3$s</string>
+    <string name="stats_placeholder">demo.db · 用户 — · 记录 — · Flow 关</string>
+    <string name="stats_format">%1$s · 用户 %2$s · 记录 %3$s · %4$s</string>
     <string name="flow_on">Flow 开</string>
     <string name="flow_off">Flow 关</string>
     <string name="backup_ready">有备份</string>
 
-    <string name="tab_crud_desc">继承 BaseDao 的增删改查与冲突策略</string>
+    <string name="tab_crud_desc">User 单表：BaseDao 增删改查与冲突策略</string>
+    <string name="tab_relation_desc">子表 userId 指向 User.id；插入先用户后历史；查询用 UserWithHistories</string>
     <string name="tab_result_desc">dbResultOf 与 Flow 三态观察</string>
     <string name="tab_transaction_desc">safeTransaction 与 batchExecute</string>
     <string name="tab_paging_desc">Paging3 与 PagedResult 手动分页</string>
     <string name="tab_ops_desc">调试、备份恢复与 DatabaseManager</string>
     <string name="demo_playbook_title">演示说明</string>
-    <string name="demo_playbook_message">顶部 Tab 对应 aw-db 能力分组；每项卡片标明调用的 API。\n\n索引见 demo/DEMO_MATRIX.md。生产环境请配置正式 Migration，勿使用 destructive 回退。</string>
+    <string name="demo_playbook_message">推荐顺序：「单表」插入用户 →「关联」Tab（先「注册并记登录」）→ 事务/分页/运维。\n\n多表怎么关联：README「多表关联示例（User ↔ LoginHistory）」— 重点看 userId 如何填、@Relation 如何查。\n\nDemo 使用 destructive 迁移，升级后请清数据或重装。</string>
 
-    <string name="tab_crud">BaseDao</string>
+    <string name="tab_crud">单表</string>
+    <string name="tab_relation">关联</string>
     <string name="tab_result">DbResult</string>
     <string name="tab_transaction">事务</string>
     <string name="tab_paging">分页</string>
@@ -58,8 +60,19 @@
     <string name="demo_delete_sub">delete id=1</string>
     <string name="demo_count_title">统计行数</string>
     <string name="demo_count_sub">COUNT 查询</string>
-    <string name="demo_delete_all_title">清空表</string>
-    <string name="demo_delete_all_sub">DELETE FROM User</string>
+    <string name="demo_delete_all_title">清空用户表</string>
+    <string name="demo_delete_all_sub">DELETE User；历史表 CASCADE 一并清空</string>
+
+    <string name="demo_insert_with_history_title">注册并记登录</string>
+    <string name="demo_insert_with_history_sub">先 insert User 得 id，再 LoginHistory(userId=id)</string>
+    <string name="demo_query_with_histories_title">查用户及历史</string>
+    <string name="demo_query_with_histories_sub">@Relation：parentColumn=id, entityColumn=userId</string>
+    <string name="demo_add_history_title">追加一条历史</string>
+    <string name="demo_add_history_sub">为指定用户 insert 登出记录</string>
+    <string name="demo_list_all_relations_title">列出全部关联</string>
+    <string name="demo_list_all_relations_sub">getAllUsersWithHistories</string>
+    <string name="demo_cascade_delete_title">删用户验 CASCADE</string>
+    <string name="demo_cascade_delete_sub">delete User 后其历史应自动删除</string>
 
     <string name="demo_db_result_title">dbResultOf</string>
     <string name="demo_db_result_sub">Success / Failure 与 getOrElse</string>
@@ -67,7 +80,7 @@
     <string name="demo_flow_sub">asDbResultWithLoading，再次点击停止</string>
 
     <string name="demo_tx_title">safeTransaction</string>
-    <string name="demo_tx_sub">两笔 insert + 查询，返回 Result</string>
+    <string name="demo_tx_sub">多表 withTx：用户 + 两条历史 + 关联查询</string>
     <string name="demo_batch_exec_title">batchExecute SKIP</string>
     <string name="demo_batch_exec_sub">逐条事务，统计成功/失败</string>
 
@@ -105,6 +118,9 @@
     <string name="api_backup">backupTo</string>
     <string name="api_restore">DbBackupHelper.restore</string>
     <string name="api_database_manager">DatabaseManager</string>
+    <string name="api_with_tx">withTx</string>
+    <string name="api_relation">@Relation</string>
+    <string name="api_foreign_key">ForeignKey.CASCADE</string>
 
     <!-- Legacy / removed from layout -->
     <string name="section_basic">基础操作</string>

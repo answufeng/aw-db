@@ -61,7 +61,7 @@ class MainActivity : AppCompatActivity(), DemoRunner {
         }.attach()
 
         refreshStats()
-        logSection(DemoSection.CRUD, "数据库已打开: $dbName")
+        logSection(DemoSection.CRUD, "已打开 $dbName（User + login_history，FK CASCADE）")
 
         findViewById<com.google.android.material.button.MaterialButton>(R.id.btnCopyLog)
             .setOnClickListener { copyLog() }
@@ -83,6 +83,11 @@ class MainActivity : AppCompatActivity(), DemoRunner {
             DemoAction.UPDATE -> updateUser()
             DemoAction.DELETE -> deleteUser()
             DemoAction.DELETE_ALL -> deleteUsers()
+            DemoAction.INSERT_WITH_HISTORY -> insertUserWithHistory()
+            DemoAction.QUERY_WITH_HISTORIES -> queryUserWithHistories()
+            DemoAction.ADD_HISTORY -> addLoginHistory()
+            DemoAction.LIST_ALL_WITH_HISTORIES -> listAllWithHistories()
+            DemoAction.CASCADE_DELETE_USER -> cascadeDeleteUser()
             DemoAction.DB_RESULT -> testDbResult()
             DemoAction.OBSERVE_FLOW -> observeFlow()
             DemoAction.TRANSACTION -> testWithTx()
@@ -148,11 +153,13 @@ class MainActivity : AppCompatActivity(), DemoRunner {
         } else {
             getString(R.string.flow_off)
         }
-        tvStats.text = getString(R.string.stats_format, dbLabel, "…", flowLabel)
+        tvStats.text = getString(R.string.stats_format, dbLabel, "…", "…", flowLabel)
         lifecycleScope.launch {
-            val countStr = runCatching { db.userDao().count().toString() }
-                .getOrElse { "—" }
-            tvStats.text = getString(R.string.stats_format, dbLabel, countStr, flowLabel)
+            val userCount = runCatching { db.userDao().count() }.getOrElse { -1 }
+            val historyCount = runCatching { db.loginHistoryDao().count() }.getOrElse { -1 }
+            val users = if (userCount >= 0) userCount.toString() else "—"
+            val histories = if (historyCount >= 0) historyCount.toString() else "—"
+            tvStats.text = getString(R.string.stats_format, dbLabel, users, histories, flowLabel)
         }
     }
 
@@ -275,9 +282,11 @@ class MainActivity : AppCompatActivity(), DemoRunner {
 
     private fun deleteUsers() {
         lifecycleScope.launch {
-            logSection(DemoSection.CRUD, "deleteAll…")
+            logSection(DemoSection.CRUD, "deleteAll User…")
+            val before = db.loginHistoryDao().count()
             db.userDao().deleteAll()
-            log("表已清空")
+            val after = db.loginHistoryDao().count()
+            log("User 已清空；login_history $before → $after（CASCADE 应同为 0）")
             refreshStats()
         }
     }
@@ -337,13 +346,123 @@ class MainActivity : AppCompatActivity(), DemoRunner {
 
     private fun testWithTx() {
         lifecycleScope.launch {
-            logSection(DemoSection.TRANSACTION, "safeTransaction…")
+            logSection(DemoSection.TRANSACTION, "safeTransaction 多表…")
             db.safeTransaction {
-                userDao().insert(User(name = "Tx-1", age = 25, tags = listOf("tx")))
-                userDao().insert(User(name = "Tx-2", age = 30, tags = listOf("tx")))
-                userDao().getAll()
-            }.onSuccess { log("成功: ${it.size} 条") }
-                .onFailure { log("失败: ${it.message}") }
+                val userId = userDao().insert(User(name = "TxUser", age = 28, tags = listOf("tx")))
+                loginHistoryDao().insert(
+                    LoginHistory(userId = userId, action = LoginHistory.ACTION_LOGIN, note = "tx-login")
+                )
+                loginHistoryDao().insert(
+                    LoginHistory(userId = userId, action = LoginHistory.ACTION_UPDATE, note = "tx-profile")
+                )
+                userDao().getUserWithHistories(userId)
+            }.onSuccess { uw ->
+                if (uw == null) {
+                    log("成功但关联为空")
+                } else {
+                    log("成功: ${uw.user.name}, 历史 ${uw.histories.size} 条")
+                    uw.histories.forEach { log("  $it") }
+                }
+            }.onFailure { log("失败: ${it.message}") }
+            refreshStats()
+        }
+    }
+
+    private fun insertUserWithHistory() {
+        lifecycleScope.launch {
+            logSection(DemoSection.RELATION, "withTx 注册用户 + 登录历史…")
+            val snapshot = db.withTx {
+                val userId = userDao().insert(
+                    User(name = "新用户-${System.currentTimeMillis() % 1000}", age = (20..50).random())
+                )
+                loginHistoryDao().insert(
+                    LoginHistory(
+                        userId = userId,
+                        action = LoginHistory.ACTION_LOGIN,
+                        note = "首次登录"
+                    )
+                )
+                userDao().getUserWithHistories(userId)!!
+            }
+            log("userId=${snapshot.user.id}, 历史 ${snapshot.histories.size} 条")
+            snapshot.histories.forEach { log("  $it") }
+            refreshStats()
+        }
+    }
+
+    private fun queryUserWithHistories() {
+        val inputLayout = TextInputLayout(this).apply { hint = "用户 ID" }
+        val editText = TextInputEditText(this).apply { setText("1") }
+        inputLayout.addView(editText)
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.demo_query_with_histories_title)
+            .setView(inputLayout)
+            .setPositiveButton(R.string.action_run) { _, _ ->
+                val id = editText.text?.toString()?.trim()?.toLongOrNull()
+                if (id == null || id <= 0) {
+                    log("无效 ID")
+                    return@setPositiveButton
+                }
+                lifecycleScope.launch {
+                    logSection(DemoSection.RELATION, "getUserWithHistories($id)…")
+                    val uw = db.userDao().getUserWithHistories(id)
+                    if (uw == null) {
+                        log("无用户 id=$id")
+                    } else {
+                        log("${uw.user} → ${uw.histories.size} 条历史")
+                        uw.histories.forEach { log("  $it") }
+                    }
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun addLoginHistory() {
+        lifecycleScope.launch {
+            val userId = db.userDao().getAll().firstOrNull()?.id
+            if (userId == null) {
+                log("请先插入用户")
+                return@launch
+            }
+            logSection(DemoSection.RELATION, "追加历史 userId=$userId…")
+            val hid = db.loginHistoryDao().insert(
+                LoginHistory(
+                    userId = userId,
+                    action = LoginHistory.ACTION_LOGOUT,
+                    note = "主动登出"
+                )
+            )
+            log("insert LoginHistory → id=$hid")
+            refreshStats()
+        }
+    }
+
+    private fun listAllWithHistories() {
+        lifecycleScope.launch {
+            logSection(DemoSection.RELATION, "getAllUsersWithHistories…")
+            val list = db.userDao().getAllUsersWithHistories()
+            log("共 ${list.size} 个用户")
+            list.forEach { uw ->
+                log("  ${uw.user.name}(id=${uw.user.id}) · ${uw.histories.size} 条历史")
+            }
+            refreshStats()
+        }
+    }
+
+    private fun cascadeDeleteUser() {
+        lifecycleScope.launch {
+            val user = db.userDao().getAll().firstOrNull()
+            if (user == null) {
+                log("无用户可删，请先插入")
+                return@launch
+            }
+            val uid = user.id
+            val histBefore = db.loginHistoryDao().getByUserId(uid).size
+            logSection(DemoSection.RELATION, "delete User id=$uid（历史 $histBefore 条）…")
+            db.userDao().delete(user)
+            val histAfter = db.loginHistoryDao().getByUserId(uid).size
+            log("删除后 login_history 中 userId=$uid 剩余 $histAfter 条（期望 0，验证 CASCADE）")
             refreshStats()
         }
     }
@@ -390,8 +509,9 @@ class MainActivity : AppCompatActivity(), DemoRunner {
             db.tableList().forEach { t ->
                 log("$t: ${db.rowCount(t)} 行")
             }
-            db.tableSchema("User").forEach { col ->
-                log("  ${col.name} ${col.type}")
+            db.tableSchema("User").forEach { col -> log("  User.${col.name} ${col.type}") }
+            db.tableSchema("login_history").forEach { col ->
+                log("  login_history.${col.name} ${col.type}")
             }
             log("ref=${DatabaseManager.getReferenceCount(dbName)}, managed=${DatabaseManager.isManaged(dbName)}")
         }

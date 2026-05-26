@@ -2,13 +2,48 @@
 
 [![](https://jitpack.io/v/answufeng/aw-db.svg)](https://jitpack.io/#answufeng/aw-db)
 
-轻量 **Room** 工具库（`com.answufeng.db`）：DSL 建库、通用 `BaseDao`、事务与批量辅助、`DbResult` 包装、类型转换、Paging 扩展与 `DatabaseManager` 生命周期。面向 **传统 XML / View 体系** 即可使用（不依赖 Compose）。
+轻量 **Room** 工具库（`com.answufeng.db`）：DSL 建库、通用 `BaseDao`、事务与批量辅助、`DbResult` 包装、类型转换、Paging 扩展与 `DatabaseManager` 生命周期。面向 **传统 XML / View 体系**（不依赖 Compose）。
 
-如果你只想最快接入，可看「5 分钟上手」；需要完整的**增删改查**代码，直接看 [增删改查示例](#增删改查示例)。
+### 建议阅读顺序
+
+| 步骤 | 章节 | 适合 |
+|------|------|------|
+| 1 | [5 分钟上手](#5-分钟上手) | 依赖、建库、第一次读写 |
+| 2 | [使用示例 → 单表增删改查](#单表增删改查) | `BaseDao` 增删改查 |
+| 3 | [使用示例 → 多表关联](#多表关联-user-与-loginhistory) | 外键、`userId`、`@Relation` |
+| 4 | [API 选型](#api-选型核心) · [参考手册](#参考手册) | 查 API、进阶配置 |
+| 5 | [演示应用](#演示应用) | 安装 Demo 手测 |
 
 ---
 
-## 5 分钟上手（最小接入）
+## 目录
+
+| 想做什么 | 跳转到 |
+|----------|--------|
+| 接入依赖与第一次读写 | [5 分钟上手](#5-分钟上手) |
+| 单表 CRUD | [单表增删改查](#单表增删改查) |
+| 多表外键与 `@Relation` | [多表关联](#多表关联-user-与-loginhistory) |
+| 能力列表 / API 怎么选 | [功能概览](#功能概览) · [API 选型](#api-选型核心) |
+| 进阶 API 说明 | [参考手册](#参考手册) |
+| 本地构建与发版检查 | [本仓库与工程检查](#本仓库与工程检查) |
+| Demo 手测 | [演示应用](#演示应用) |
+| SQLCipher（可选） | [SQLCipher（可选）](#sqlcipher可选) |
+| FAQ / 混淆 | [常见问题](#常见问题) · [混淆配置](#混淆配置) |
+
+---
+
+## 环境要求
+
+| 项 | 最低版本 |
+|----|----------|
+| Android minSdk | 24+ |
+| Kotlin | 2.0+ |
+| Room | 2.6.1+（与库内一致） |
+| 构建本仓库 | **JDK 17+**；`demo` 用 compileSdk 35 验证（库不限定宿主 targetSdk） |
+
+---
+
+## 5 分钟上手
 
 ### 1) 添加依赖（JitPack）
 
@@ -44,7 +79,9 @@ dependencies {
 
 </details>
 
-### 2) 定义 Entity / Dao / Database（Room 标准写法）
+### 2) 定义 Entity / Dao / Database
+
+以下为**单表**最小示例；带外键的子表（如登录历史）见 [多表关联](#多表关联-user-与-loginhistory)。
 
 ```kotlin
 @Entity
@@ -73,7 +110,7 @@ abstract class AppDatabase : RoomDatabase() {
 }
 ```
 
-### 3) 打开数据库并完成一次读写 / Flow 观察
+### 3) 打开数据库并读写
 
 ```kotlin
 // 打开（推荐：DatabaseManager 管生命周期）
@@ -102,9 +139,13 @@ DatabaseManager.release("app.db")
 
 ---
 
-## 增删改查示例
+## 使用示例
 
-在 [5 分钟上手](#5-分钟上手最小接入) 的 Entity / Dao / Database 基础上，用 `BaseDao` 完成典型 CRUD。以下在 `viewModelScope` / `lifecycleScope` 中调用（Room 的 `suspend` 已切到 IO 线程，无需再包 `Dispatchers.IO`）。
+以下均在 `lifecycleScope` / `viewModelScope` 中调用。Room 的 `suspend` 已调度到 IO 线程，**无需**再包 `withContext(Dispatchers.IO)`。
+
+### 单表增删改查
+
+继承 `BaseDao<T>` 即可获得 `insert` / `update` / `delete` / `upsert` 等；**列表、条件查询**需在 Dao 里自行写 `@Query`。
 
 ```kotlin
 class UserRepository(context: Context) {
@@ -173,31 +214,180 @@ dao.upsert(user)
 
 </details>
 
----
+### 多表关联（User 与 LoginHistory）
 
-## 目录（按常见需求跳转）
+典型场景：**一个用户对应多条登录/操作历史**（1:N）。aw-db 不替代 Room 的关联能力，但与 `BaseDao`、`withTx`、`DatabaseManager` 可配合使用。Demo 模块有完整可运行代码，App 内 **「关联」** Tab 可手测。
 
-| 想做什么 | 跳转到 |
-|----------|--------|
-| 最短时间跑通依赖与第一个读写 | [5 分钟上手（最小接入）](#5-分钟上手最小接入) · [环境要求](#环境要求) |
-| **增删改查完整示例** | [增删改查示例](#增删改查示例) |
-| 能力列表 / 选型判断 | [功能概览](#功能概览) · [API 选型（核心）](#api-选型核心) |
-| DSL 建库、BaseDao、事务、Converter、Paging、DatabaseManager | [参考手册](#参考手册) |
-| Demo 按 Tab 手测各能力 | [演示应用](#演示应用) |
-| 本地构建、CI、发版前检查 | [本仓库与工程检查](#本仓库与工程检查) |
-| SQLCipher（可选） | [SQLCipher（可选）](#sqlcipher可选) |
-| FAQ、混淆 | [常见问题](#常见问题) · [混淆配置](#混淆配置) |
+#### 关系示意
 
----
+```mermaid
+erDiagram
+    User ||--o{ LoginHistory : "userId → id"
+    User {
+        long id PK
+        string name
+        int age
+    }
+    LoginHistory {
+        long id PK
+        long userId FK
+        string action
+        string note
+    }
+```
 
-## 环境要求
+| 层次 | 怎么做 |
+|------|--------|
+| **建表** | 子表字段 `userId` + `@Entity(foreignKeys = …)` 指向 `User.id` |
+| **插入** | 先 `insert User` 得到 `id`，再 `LoginHistory(userId = id, …)`；推荐 `withTx` |
+| **查「用户+全部历史」** | POJO + `@Relation`（见下） |
+| **只查历史** | `loginHistoryDao.getByUserId(userId)`，不必用 `@Relation` |
+| **删用户** | `onDelete = CASCADE` 时，SQLite 自动删该用户全部历史 |
 
-| 项 | 最低版本 |
-|----|----------|
-| Android minSdk | 24+ |
-| Kotlin | 2.0+ |
-| Room | 2.6.1+（与库内一致） |
-| 构建本仓库 | **JDK 17+**；`demo` 用 compileSdk 35 / targetSdk 35 做验证（库不限定宿主 targetSdk） |
+#### 1. 定义实体与外键
+
+```kotlin
+@Entity
+data class User(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val age: Int
+)
+
+@Entity(
+    tableName = "login_history",
+    foreignKeys = [
+        ForeignKey(
+            entity = User::class,           // 父表实体
+            parentColumns = ["id"],         // 父表主键列
+            childColumns = ["userId"],      // 子表外键列（见下方字段）
+            onDelete = ForeignKey.CASCADE,  // 删用户 → 自动删其历史
+            onUpdate = ForeignKey.CASCADE   // 改用户 id 时同步（少见）
+        )
+    ],
+    indices = [Index("userId")]             // 按 userId 查询时建议加索引
+)
+data class LoginHistory(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val userId: Long,                       // 必须对应某条 User.id
+    val action: String,
+    val note: String = "",
+    val createdAt: Date = Date()
+)
+```
+
+| 注解/字段 | 含义 |
+|-----------|------|
+| `ForeignKey.entity` | 父表是哪个 `@Entity` |
+| `parentColumns` / `childColumns` | 父主键列名 ↔ 子表外键列名，**名字不必相同**，Demo 为 `id` ↔ `userId` |
+| `userId` | 普通 `Long` 字段；Room **不会**自动填，插入 `LoginHistory` 前你要先有用户的 `id` |
+| `indices` | 常查 `WHERE userId = ?` 时建议索引 |
+
+`@Database` 注册**两个**实体，并各提供一个 Dao：
+
+```kotlin
+@Database(entities = [User::class, LoginHistory::class], version = 2)
+abstract class AppDatabase : RoomDatabase() {
+    abstract fun userDao(): UserDao
+    abstract fun loginHistoryDao(): LoginHistoryDao
+}
+```
+
+```kotlin
+@Dao
+abstract class LoginHistoryDao : BaseDao<LoginHistory>() {
+    @Query("SELECT * FROM login_history WHERE userId = :userId ORDER BY createdAt DESC")
+    suspend fun getByUserId(userId: Long): List<LoginHistory>
+}
+```
+
+#### 2. 插入：如何把 LoginHistory 关联到 User
+
+**核心规则：`userId` 必须等于已存在用户的 `User.id`；Room 不会自动填写。**
+
+```kotlin
+// 方式 A：分两步（适合简单场景）
+val userId = userDao.insert(User(name = "张三", age = 25))
+loginHistoryDao.insert(
+    LoginHistory(userId = userId, action = "LOGIN", note = "首次登录")
+)
+
+// 方式 B：同一事务（推荐，避免只插入一半）
+db.withTx {
+    val userId = userDao().insert(User(name = "李四", age = 30))
+    loginHistoryDao().insert(
+        LoginHistory(userId = userId, action = "LOGIN")
+    )
+    userId
+}
+```
+
+> `userId` 不能为 `0` 或不存在的主键，否则外键失败。  
+> `UserDao.insert` 为 `REPLACE` 时可能 **CASCADE 清空**该用户下历史，有子表时优先 `upsert` / `insertOrIgnore`（见 [FAQ](#常见问题)）。
+
+#### 3. 查询：一次取出「用户 + 历史列表」
+
+用 **`@Embedded` + `@Relation`**（Room 自动生成子表查询，无需手写 JOIN）：
+
+```kotlin
+data class UserWithHistories(
+    @Embedded val user: User,
+    @Relation(
+        parentColumn = "id",       // User 表的主键列
+        entityColumn = "userId"    // LoginHistory 表里指向 User 的列
+    )
+    val histories: List<LoginHistory>
+)
+```
+
+```kotlin
+@Dao
+abstract class UserDao : BaseDao<User>() {
+    @Transaction
+    @Query("SELECT * FROM User WHERE id = :userId")
+    suspend fun getUserWithHistories(userId: Long): UserWithHistories?
+
+    @Transaction
+    @Query("SELECT * FROM User ORDER BY id ASC")
+    suspend fun getAllUsersWithHistories(): List<UserWithHistories>
+}
+```
+
+| 要点 | 说明 |
+|------|------|
+| `@Transaction` | 读用户 + 读多条历史要在同一事务里，**必须**加在方法上 |
+| `@Query` 只查父表 | 写 `SELECT * FROM User WHERE id = ?` 即可；子表由 `@Relation` 按 `userId` 自动加载 |
+| `parentColumn` / `entityColumn` | 必须与实体字段名一致（Demo：`id` / `userId`） |
+
+使用：
+
+```kotlin
+val uw = userDao.getUserWithHistories(1)
+if (uw != null) {
+    val name = uw.user.name
+    uw.histories.forEach { history ->
+        // history.userId 应等于 uw.user.id
+    }
+}
+```
+
+#### 4. 删除
+
+```kotlin
+userDao.delete(user)           // CASCADE：该用户全部历史一并删除
+loginHistoryDao.delete(row)    // 只删一条历史，保留用户
+```
+
+#### 场景速查
+
+| 你想… | 代码要点 |
+|--------|----------|
+| 注册并记首条登录 | `withTx { insert User → insert LoginHistory(userId) }` |
+| 给老用户追加历史 | `loginHistoryDao.insert(LoginHistory(userId = 已有Id, …))` |
+| 看用户+全部历史 | `userDao.getUserWithHistories(userId)` |
+| 只看某用户历史 | `loginHistoryDao.getByUserId(userId)` |
+
+Demo 源码：`demo/.../User.kt`、`LoginHistory.kt`、`UserWithHistories.kt`、`UserDao.kt`、`LoginHistoryDao.kt`。
 
 ---
 
@@ -218,7 +408,15 @@ dao.upsert(user)
 
 ## 演示应用
 
-`demo` 按能力分为 **5 个 Tab**（BaseDao / DbResult / 事务 / 分页 / 运维），卡片式操作项 + 底部固定日志。
+安装 `demo` 模块对应 APK，按 Tab 手测（与上文 [使用示例](#使用示例) 对应）：
+
+| Tab | 内容 |
+|-----|------|
+| 单表 | `BaseDao` 增删改查 |
+| **关联** | `userId` 关联、`@Relation`、CASCADE 删除 |
+| DbResult / 事务 / 分页 / 运维 | 库内其它能力 |
+
+推荐：单表插入用户 → **关联**「注册并记登录」→「列出全部关联」→「删用户验 CASCADE」。
 
 ---
 
@@ -227,7 +425,8 @@ dao.upsert(user)
 | 场景 | 推荐 API |
 |------|----------|
 | 打开数据库 | `DatabaseManager.getOrCreate` + `release` |
-| CRUD | 继承 `BaseDao` |
+| 单表 CRUD | 继承 `BaseDao` + 自定义 `@Query` |
+| 多表 1:N | `ForeignKey` + 子表 `userId` + `@Relation`（见 [多表关联](#多表关联-user-与-loginhistory)） |
 | 单次查询/写入 | Dao `suspend` 或 `dbResultOf { }` |
 | UI 观察列表 | `Flow.asDbResultWithLoading()` |
 | 分页列表 | `dao::pagingSource.asPagingFlow` + Paging `LoadState` |
@@ -485,7 +684,8 @@ AwDatabase.build<AppDatabase>(context, "app.db") {
 - **迁移**：发版前完整迁移链；仅开发可销毁式。
 - **Flow UI**：需要加载态用 `asDbResultWithLoading()`（示例见上文「5 分钟上手」）。
 - **分页**：列表用 Paging3；仅简单页码用 `PagedResult`；避免全表进内存再 slice。
-- **JSON 列**：小集合、低频可 `AwConverters`；高频大集合用关联表。
+- **JSON 列**：小集合、低频可 `AwConverters`；高频或需关联查询用**子表 + 外键**（见 [多表关联](#多表关联-user-与-loginhistory)）。
+- **多表**：插入子表前必须有父表 `id`；联查用 `@Transaction` + `@Relation`。
 - **备份还原**：还原后丢弃旧 `RoomDatabase` 引用，按新实例重新 `getOrCreate` / `release`。
 
 ---
@@ -501,6 +701,7 @@ AwDatabase.build<AppDatabase>(context, "app.db") {
 - **asDbResultLiveData 超时？** 无观察者时多久断开 Flow；转屏可加大 `timeoutInMs`（如 `10_000L`）。
 - **dbResultOf 会捕获 Error 吗？** 不会，仅捕获 `Exception`；`Error` 仍会向上抛。
 - **还原后还要 release 吗？** `restore` 内部 `getOrCreate` 后引用计数为 1，与首次打开相同，退出时仍需 `release`。
+- **LoginHistory 如何关联 User？** 子表 `userId` 存 `User.id`；插入：`insert User` 得 `id` 再 `LoginHistory(userId=id)`；查询：`UserWithHistories` + `@Relation`。详见 [多表关联](#多表关联-user-与-loginhistory)。
 - **safeTransaction 与 dbResultOf？** 前者返回 Kotlin `Result`（事务边界）；后者返回 `DbResult`（适合直接驱动 UI 三态）。
 - **Enum 列出现未知值？** 默认 `EnumConverter` 打日志并返回 null；生产可 `strict = true` 尽早失败。
 - **Java 项目能用吗？** 可以；`DatabaseManager.getOrNull(name, AppDatabase.class)` 等非 inline API 可从 Java 调用，DSL 建库建议 Kotlin。

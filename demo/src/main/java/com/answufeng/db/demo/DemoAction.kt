@@ -14,6 +14,11 @@ enum class DemoAction {
     UPDATE,
     DELETE,
     DELETE_ALL,
+    INSERT_WITH_HISTORY,
+    QUERY_WITH_HISTORIES,
+    ADD_HISTORY,
+    CASCADE_DELETE_USER,
+    LIST_ALL_WITH_HISTORIES,
     DB_RESULT,
     OBSERVE_FLOW,
     TRANSACTION,
@@ -32,6 +37,7 @@ enum class DemoSection(
     val descRes: Int
 ) {
     CRUD(R.string.tab_crud, R.string.tab_crud_desc),
+    RELATION(R.string.tab_relation, R.string.tab_relation_desc),
     RESULT(R.string.tab_result, R.string.tab_result_desc),
     TRANSACTION(R.string.tab_transaction, R.string.tab_transaction_desc),
     PAGING(R.string.tab_paging, R.string.tab_paging_desc),
@@ -58,6 +64,38 @@ object DemoCatalog {
             item(DemoAction.DELETE, R.string.demo_delete_title, R.string.demo_delete_sub, R.string.api_base_dao_delete),
             item(DemoAction.COUNT, R.string.demo_count_title, R.string.demo_count_sub, R.string.api_dao_query),
             item(DemoAction.DELETE_ALL, R.string.demo_delete_all_title, R.string.demo_delete_all_sub, R.string.api_dao_query),
+        )
+        DemoSection.RELATION -> listOf(
+            item(
+                DemoAction.INSERT_WITH_HISTORY,
+                R.string.demo_insert_with_history_title,
+                R.string.demo_insert_with_history_sub,
+                R.string.api_with_tx
+            ),
+            item(
+                DemoAction.QUERY_WITH_HISTORIES,
+                R.string.demo_query_with_histories_title,
+                R.string.demo_query_with_histories_sub,
+                R.string.api_relation
+            ),
+            item(
+                DemoAction.ADD_HISTORY,
+                R.string.demo_add_history_title,
+                R.string.demo_add_history_sub,
+                R.string.api_base_dao_insert
+            ),
+            item(
+                DemoAction.LIST_ALL_WITH_HISTORIES,
+                R.string.demo_list_all_relations_title,
+                R.string.demo_list_all_relations_sub,
+                R.string.api_relation
+            ),
+            item(
+                DemoAction.CASCADE_DELETE_USER,
+                R.string.demo_cascade_delete_title,
+                R.string.demo_cascade_delete_sub,
+                R.string.api_foreign_key
+            ),
         )
         DemoSection.RESULT -> listOf(
             item(DemoAction.DB_RESULT, R.string.demo_db_result_title, R.string.demo_db_result_sub, R.string.api_db_result_of),
