@@ -10,10 +10,12 @@ import android.view.MenuItem
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.appbar.MaterialToolbar
 import androidx.lifecycle.lifecycleScope
+import androidx.paging.PagingSource
 import com.answufeng.db.*
+import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.tabs.TabLayoutMediator
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.Job
@@ -23,15 +25,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), DemoRunner {
 
     private lateinit var db: AppDatabase
     private lateinit var tvLog: TextView
     private lateinit var logScrollView: ScrollView
-    private lateinit var tvDbName: TextView
-    private lateinit var tvUserCount: TextView
-    private lateinit var tvFlowStatus: TextView
-    private lateinit var tvBackupPath: TextView
+    private lateinit var tvStats: TextView
 
     private var flowJob: Job? = null
     private val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
@@ -43,46 +42,59 @@ class MainActivity : AppCompatActivity() {
 
         tvLog = findViewById(R.id.tvLog)
         logScrollView = findViewById(R.id.logScrollView)
-        tvDbName = findViewById(R.id.tvDbName)
-        tvUserCount = findViewById(R.id.tvUserCount)
-        tvFlowStatus = findViewById(R.id.tvFlowStatus)
-        tvBackupPath = findViewById(R.id.tvBackupPath)
+        tvStats = findViewById(R.id.tvStats)
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
+        supportActionBar?.subtitle = getString(R.string.subtitle_main)
 
         db = DatabaseManager.getOrCreate<AppDatabase>(this, dbName) {
             fallbackToDestructiveMigration()
         }
-        tvDbName.text = dbName
-        tvFlowStatus.text = "未开启"
-        refreshStats()
-        log("数据库初始化完成: $dbName")
 
-        findViewById<TextView>(R.id.btnRefresh).setOnClickListener { refreshStats() }
-        findViewById<TextView>(R.id.btnInsert).setOnClickListener { insertUser() }
-        findViewById<TextView>(R.id.btnBatchInsert).setOnClickListener { batchInsert() }
-        findViewById<TextView>(R.id.btnQueryAll).setOnClickListener { queryUsers() }
-        findViewById<TextView>(R.id.btnQueryById).setOnClickListener { queryById() }
-        findViewById<TextView>(R.id.btnUpsert).setOnClickListener { upsertUser() }
-        findViewById<TextView>(R.id.btnCount).setOnClickListener { countUsers() }
-        findViewById<TextView>(R.id.btnDeleteAll).setOnClickListener { deleteUsers() }
-        findViewById<TextView>(R.id.btnInsertOrIgnore).setOnClickListener { insertOrIgnore() }
-        findViewById<TextView>(R.id.btnUpdate).setOnClickListener { updateUser() }
-        findViewById<TextView>(R.id.btnDelete).setOnClickListener { deleteUser() }
-        findViewById<TextView>(R.id.btnDbResult).setOnClickListener { testDbResult() }
-        findViewById<TextView>(R.id.btnTransaction).setOnClickListener { testWithTx() }
-        findViewById<TextView>(R.id.btnBatchExecute).setOnClickListener { testBatchExecute() }
-        findViewById<TextView>(R.id.btnObserveFlow).setOnClickListener { observeFlow() }
-        findViewById<TextView>(R.id.btnDebugHelper).setOnClickListener { testDebugHelper() }
-        findViewById<TextView>(R.id.btnPagedResult).setOnClickListener { testPagedResult() }
-        findViewById<TextView>(R.id.btnBackup).setOnClickListener { testBackup() }
-        findViewById<TextView>(R.id.btnRestore).setOnClickListener { testRestore() }
-        findViewById<TextView>(R.id.btnGetOrNull).setOnClickListener { testGetOrNull() }
-        findViewById<TextView>(R.id.btnOpenDbPath).setOnClickListener { showDbPath() }
-        findViewById<TextView>(R.id.btnCopyLog).setOnClickListener { copyLog() }
-        findViewById<TextView>(R.id.btnShareLog).setOnClickListener { shareLog() }
-        findViewById<TextView>(R.id.btnClearLog).setOnClickListener { clearLog() }
+        val pager = findViewById<androidx.viewpager2.widget.ViewPager2>(R.id.pagerSections)
+        pager.adapter = DemoPagerAdapter(this)
+        pager.offscreenPageLimit = DemoSection.entries.size
+
+        TabLayoutMediator(findViewById(R.id.tabSections), pager) { tab, position ->
+            tab.text = getString(DemoSection.entries[position].titleRes)
+        }.attach()
+
+        refreshStats()
+        logSection(DemoSection.CRUD, "数据库已打开: $dbName")
+
+        findViewById<com.google.android.material.button.MaterialButton>(R.id.btnCopyLog)
+            .setOnClickListener { copyLog() }
+        findViewById<com.google.android.material.button.MaterialButton>(R.id.btnShareLog)
+            .setOnClickListener { shareLog() }
+        findViewById<com.google.android.material.button.MaterialButton>(R.id.btnClearLog)
+            .setOnClickListener { clearLog() }
+    }
+
+    override fun run(action: DemoAction) {
+        when (action) {
+            DemoAction.INSERT -> insertUser()
+            DemoAction.BATCH_INSERT -> batchInsert()
+            DemoAction.QUERY_ALL -> queryUsers()
+            DemoAction.QUERY_BY_ID -> queryById()
+            DemoAction.UPSERT -> upsertUser()
+            DemoAction.COUNT -> countUsers()
+            DemoAction.INSERT_OR_IGNORE -> insertOrIgnore()
+            DemoAction.UPDATE -> updateUser()
+            DemoAction.DELETE -> deleteUser()
+            DemoAction.DELETE_ALL -> deleteUsers()
+            DemoAction.DB_RESULT -> testDbResult()
+            DemoAction.OBSERVE_FLOW -> observeFlow()
+            DemoAction.TRANSACTION -> testWithTx()
+            DemoAction.BATCH_EXECUTE -> testBatchExecute()
+            DemoAction.PAGED_RESULT -> testPagedResult()
+            DemoAction.PAGING_SOURCE -> testPagingSource()
+            DemoAction.DEBUG_HELPER -> testDebugHelper()
+            DemoAction.BACKUP -> testBackup()
+            DemoAction.RESTORE -> testRestore()
+            DemoAction.GET_OR_NULL -> testGetOrNull()
+            DemoAction.DB_PATH -> showDbPath()
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -91,6 +103,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
+        R.id.action_refresh -> {
+            refreshStats()
+            true
+        }
         R.id.action_demo_playbook -> {
             MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.demo_playbook_title)
@@ -106,7 +122,11 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         flowJob?.cancel()
         DatabaseManager.release(dbName)
-        log("数据库连接已释放")
+    }
+
+    private fun logSection(section: DemoSection, msg: String) {
+        val tag = getString(section.titleRes)
+        log("[$tag] $msg")
     }
 
     private fun log(msg: String) {
@@ -117,227 +137,225 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshStats() {
-        val backupFile = backupFile()
-        tvBackupPath.text = "${getString(R.string.label_backup)}：${backupFile.absolutePath}"
-        lifecycleScope.launch {
-            runCatching { db.userDao().count() }
-                .onSuccess { tvUserCount.text = it.toString() }
-                .onFailure { tvUserCount.text = "—" }
+        val backup = backupFile()
+        val dbLabel = if (backup.exists()) {
+            "$dbName · ${getString(R.string.backup_ready)}"
+        } else {
+            dbName
         }
+        val flowLabel = if (flowJob?.isActive == true) {
+            getString(R.string.flow_on)
+        } else {
+            getString(R.string.flow_off)
+        }
+        tvStats.text = getString(R.string.stats_format, dbLabel, "…", flowLabel)
+        lifecycleScope.launch {
+            val countStr = runCatching { db.userDao().count().toString() }
+                .getOrElse { "—" }
+            tvStats.text = getString(R.string.stats_format, dbLabel, countStr, flowLabel)
+        }
+    }
+
+    private fun updateFlowStats() {
+        refreshStats()
     }
 
     private fun clearLog() {
         tvLog.text = ""
-        log("日志已清除")
+        log("日志已清空")
     }
 
     private fun copyLog() {
         val text = tvLog.text?.toString().orEmpty()
         if (text.isBlank()) {
-            log("日志为空，无需复制")
+            log("日志为空")
             return
         }
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(ClipData.newPlainText("aw-db-demo-log", text))
-        log("日志已复制到剪贴板")
+        log("已复制到剪贴板")
     }
 
     private fun shareLog() {
         val text = tvLog.text?.toString().orEmpty()
         if (text.isBlank()) {
-            log("日志为空，无需分享")
+            log("日志为空")
             return
         }
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, "aw-db demo log")
-            putExtra(Intent.EXTRA_TEXT, text)
-        }
-        startActivity(Intent.createChooser(intent, "分享日志"))
+        startActivity(
+            Intent.createChooser(
+                Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_SUBJECT, "aw-db demo log")
+                    putExtra(Intent.EXTRA_TEXT, text)
+                },
+                getString(R.string.action_share_log)
+            )
+        )
     }
 
     private fun insertUser() {
         lifecycleScope.launch {
-            log("开始插入用户...")
+            logSection(DemoSection.CRUD, "插入用户…")
             val dao = db.userDao()
-            val tags = listOf("tag-${(1..10).random()}", "tag-${(1..10).random()}")
-            val user = User(name = "用户-${System.currentTimeMillis() % 1000}", age = (20..60).random(), tags = tags)
+            val user = User(
+                name = "用户-${System.currentTimeMillis() % 1000}",
+                age = (20..60).random(),
+                tags = listOf("demo")
+            )
             val id = dao.insert(user)
-            log("插入成功: $user, ID=$id")
+            log("insert → id=$id, $user")
             refreshStats()
         }
     }
 
     private fun batchInsert() {
         lifecycleScope.launch {
-            log("开始批量插入...")
-            val dao = db.userDao()
+            logSection(DemoSection.CRUD, "insertAll ×5…")
             val users = (1..5).map {
-                User(name = "批量-$it", age = (20..30).random(), tags = listOf("batch-$it"))
+                User(name = "批量-$it", age = (20..30).random(), tags = listOf("batch"))
             }
-            val ids = dao.insertAll(users)
-            log("批量插入成功: ${ids.size}个用户, IDs=$ids")
+            val ids = db.userDao().insertAll(users)
+            log("insertAll → ${ids.size} 条, ids=$ids")
             refreshStats()
         }
     }
 
     private fun queryUsers() {
         lifecycleScope.launch {
-            log("开始查询所有用户...")
+            logSection(DemoSection.CRUD, "getAll…")
             val users = db.userDao().getAll()
-            log("用户总数: ${users.size}")
-            users.forEach { log("  $it") }
+            log("共 ${users.size} 条")
+            users.take(8).forEach { log("  $it") }
+            if (users.size > 8) log("  …")
             refreshStats()
         }
     }
 
     private fun queryById() {
-        val inputLayout = TextInputLayout(this).apply {
-            hint = "输入用户 ID"
-            setPadding(0, 8, 0, 0)
-        }
-        val editText = TextInputEditText(this).apply {
-            setText("1")
-        }
+        val inputLayout = TextInputLayout(this).apply { hint = "用户 ID" }
+        val editText = TextInputEditText(this).apply { setText("1") }
         inputLayout.addView(editText)
-
         MaterialAlertDialogBuilder(this)
-            .setTitle("按 ID 查询")
+            .setTitle(R.string.demo_query_id_title)
             .setView(inputLayout)
-            .setPositiveButton("查询") { _, _ ->
+            .setPositiveButton(R.string.action_run) { _, _ ->
                 val id = editText.text?.toString()?.trim()?.toLongOrNull()
                 if (id == null || id <= 0) {
-                    log("ID 无效：${editText.text}")
+                    log("无效 ID")
                     return@setPositiveButton
                 }
                 lifecycleScope.launch {
-                    log("开始根据ID查询... (ID=$id)")
+                    logSection(DemoSection.CRUD, "getById($id)…")
                     val user = db.userDao().getById(id)
-                    if (user != null) log("找到用户: $user") else log("未找到用户 (ID=$id)")
+                    log(if (user != null) "找到: $user" else "未找到 id=$id")
                 }
             }
-            .setNegativeButton("取消", null)
+            .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
 
     private fun upsertUser() {
         lifecycleScope.launch {
-            log("开始更新/插入用户...")
-            val dao = db.userDao()
-            val user = User(id = 1, name = "更新-${System.currentTimeMillis() % 1000}", age = 99)
-            val id = dao.upsert(user)
-            log("更新/插入成功: $user, 结果=$id")
+            logSection(DemoSection.CRUD, "upsert id=1…")
+            val user = User(id = 1, name = "Upsert-${System.currentTimeMillis() % 1000}", age = 99)
+            val id = db.userDao().upsert(user)
+            log("upsert → $id, $user")
             refreshStats()
         }
     }
 
     private fun countUsers() {
         lifecycleScope.launch {
-            log("开始统计用户数...")
             val count = db.userDao().count()
-            log("用户总数: $count")
+            logSection(DemoSection.CRUD, "count → $count")
             refreshStats()
         }
     }
 
     private fun deleteUsers() {
         lifecycleScope.launch {
-            log("开始删除所有用户...")
+            logSection(DemoSection.CRUD, "deleteAll…")
             db.userDao().deleteAll()
-            log("所有用户已删除")
+            log("表已清空")
             refreshStats()
         }
     }
 
     private fun insertOrIgnore() {
         lifecycleScope.launch {
-            log("开始测试 insertOrIgnore...")
+            logSection(DemoSection.CRUD, "insertOrIgnore 冲突测试…")
             val dao = db.userDao()
-            val user1 = User(id = 1, name = "忽略测试1", age = 25)
-            val id1 = dao.insertOrIgnore(user1)
-            log("首次 insertOrIgnore: ID=$id1")
-            val user2 = User(id = 1, name = "忽略测试2", age = 30)
-            val id2 = dao.insertOrIgnore(user2)
-            log("重复 insertOrIgnore: ID=$id2 (冲突忽略，返回 -1)")
+            val id1 = dao.insertOrIgnore(User(id = 1, name = "A", age = 25))
+            val id2 = dao.insertOrIgnore(User(id = 1, name = "B", age = 30))
+            log("首次 id=$id1, 重复 id=$id2 (期望 -1)")
         }
     }
 
     private fun updateUser() {
         lifecycleScope.launch {
-            log("开始更新用户...")
             val dao = db.userDao()
             val user = dao.getById(1)
-            if (user != null) {
-                val updated = user.copy(name = "已更新-${System.currentTimeMillis() % 1000}")
-                val rows = dao.update(updated)
-                log("更新成功: $updated, 影响行数=$rows")
-            } else {
-                log("未找到 ID=1 的用户，无法更新")
+            if (user == null) {
+                log("无 id=1，请先插入")
+                return@launch
             }
+            val updated = user.copy(name = "更新-${System.currentTimeMillis() % 1000}")
+            val rows = dao.update(updated)
+            logSection(DemoSection.CRUD, "update → rows=$rows")
             refreshStats()
         }
     }
 
     private fun deleteUser() {
         lifecycleScope.launch {
-            log("开始删除单条用户...")
             val dao = db.userDao()
             val user = dao.getById(1)
-            if (user != null) {
-                val rows = dao.delete(user)
-                log("删除成功: $user, 影响行数=$rows")
-            } else {
-                log("未找到 ID=1 的用户，无法删除")
+            if (user == null) {
+                log("无 id=1")
+                return@launch
             }
+            val rows = dao.delete(user)
+            logSection(DemoSection.CRUD, "delete → rows=$rows")
             refreshStats()
         }
     }
 
     private fun testDbResult() {
         lifecycleScope.launch {
-            log("开始测试 DbResult...")
-            val result = dbResultOf { db.userDao().getAll() }
-            result.fold(
-                onLoading = { log("加载中...") },
-                onSuccess = { log("DbResult 成功: ${it.size}个用户") },
-                onFailure = { log("DbResult 失败: ${it.message}") }
+            logSection(DemoSection.RESULT, "dbResultOf…")
+            dbResultOf { db.userDao().getAll() }.fold(
+                onLoading = { log("Loading") },
+                onSuccess = { log("Success: ${it.size} 条") },
+                onFailure = { log("Failure: ${it.message}") }
             )
-
-            val lazyResult: DbResult<String> = DbResult.Failure(RuntimeException("test"))
-            val recovered = lazyResult.getOrElse { "默认值（惰性求值）" }
-            log("getOrElse 惰性求值: $recovered")
+            val failed: DbResult<String> = DbResult.Failure(RuntimeException("demo"))
+            val recovered = failed.getOrElse { "默认值" }
+            log("getOrElse → $recovered")
         }
     }
 
     private fun testWithTx() {
         lifecycleScope.launch {
-            log("开始测试事务...")
-            val result = db.safeTransaction {
-                val dao = userDao()
-                dao.insert(User(name = "事务1", age = 25, tags = listOf("tx")))
-                dao.insert(User(name = "事务2", age = 30, tags = listOf("tx")))
-                dao.getAll()
-            }
-            result.onSuccess { log("事务成功: ${it.size}个用户") }
-            result.onFailure { log("事务失败: ${it.message}") }
+            logSection(DemoSection.TRANSACTION, "safeTransaction…")
+            db.safeTransaction {
+                userDao().insert(User(name = "Tx-1", age = 25, tags = listOf("tx")))
+                userDao().insert(User(name = "Tx-2", age = 30, tags = listOf("tx")))
+                userDao().getAll()
+            }.onSuccess { log("成功: ${it.size} 条") }
+                .onFailure { log("失败: ${it.message}") }
             refreshStats()
         }
     }
 
     private fun testBatchExecute() {
         lifecycleScope.launch {
-            log("开始测试批量执行...")
-            val dao = db.userDao()
-            val users = (1..5).map {
-                User(name = "批量执行-$it", age = (20..30).random())
-            }
-            val result = db.batchExecute(users) { user ->
-                dao.insert(user)
-            }
-            when (result) {
-                is BatchResult.Skipped -> log("批量执行成功: 成功${result.successCount}个, 失败${result.failedCount}个")
-                is BatchResult.AllOrNothing -> result.result.onSuccess { log("批量执行全部成功: $it") }
-                    .onFailure { log("批量执行失败: ${it.message}") }
+            logSection(DemoSection.TRANSACTION, "batchExecute SKIP…")
+            val users = (1..5).map { User(name = "Batch-$it", age = 20 + it) }
+            when (val r = db.batchExecute(users) { db.userDao().insert(it) }) {
+                is BatchResult.Skipped ->
+                    log("成功 ${r.successCount}, 失败 ${r.failedCount}")
+                is BatchResult.AllOrNothing -> log("FAIL_FAST 分支")
             }
             refreshStats()
         }
@@ -347,20 +365,20 @@ class MainActivity : AppCompatActivity() {
         if (flowJob?.isActive == true) {
             flowJob?.cancel()
             flowJob = null
-            tvFlowStatus.text = "未开启"
-            log("Flow 观察已停止")
+            updateFlowStats()
+            logSection(DemoSection.RESULT, "Flow 已停止")
             return
         }
         flowJob = lifecycleScope.launch {
-            tvFlowStatus.text = "运行中"
-            log("开始观察 Flow（再次点击停止）...")
+            updateFlowStats()
+            logSection(DemoSection.RESULT, "asDbResultWithLoading 收集中…")
             db.userDao().observeAll()
                 .asDbResultWithLoading()
-                .collect { result ->
-                    result.fold(
-                        onLoading = { log("[Flow] 加载中...") },
-                        onSuccess = { log("[Flow] 收到: ${it.size}个用户") },
-                        onFailure = { log("[Flow] 错误: ${it.message}") }
+                .collect { r ->
+                    r.fold(
+                        onLoading = { log("[Flow] Loading") },
+                        onSuccess = { log("[Flow] ${it.size} 条") },
+                        onFailure = { log("[Flow] ${it.message}") }
                     )
                 }
         }
@@ -368,103 +386,104 @@ class MainActivity : AppCompatActivity() {
 
     private fun testDebugHelper() {
         lifecycleScope.launch {
-            log("开始测试 DbDebugHelper...")
-            val tables = db.tableList()
-            log("表列表: $tables")
-            tables.forEach { table ->
-                val count = db.rowCount(table)
-                log("  $table: $count 行")
+            logSection(DemoSection.OPS, "DbDebugHelper…")
+            db.tableList().forEach { t ->
+                log("$t: ${db.rowCount(t)} 行")
             }
-            val columns = db.tableSchema("User")
-            log("User 表结构:")
-            columns.forEach { col ->
-                log("  ${col.name} ${col.type}${if (col.notNull) " NOT NULL" else ""}${col.defaultValue?.let { " DEFAULT $it" } ?: ""}")
+            db.tableSchema("User").forEach { col ->
+                log("  ${col.name} ${col.type}")
             }
-            log("引用计数: ${DatabaseManager.getReferenceCount("demo.db")}")
-            log("是否被管理: ${DatabaseManager.isManaged("demo.db")}")
+            log("ref=${DatabaseManager.getReferenceCount(dbName)}, managed=${DatabaseManager.isManaged(dbName)}")
+        }
+    }
+
+    private fun testPagingSource() {
+        lifecycleScope.launch {
+            logSection(DemoSection.PAGING, "PagingSource Refresh…")
+            val source = db.userDao().pagingSource()
+            val params = PagingSource.LoadParams.Refresh<Int>(
+                key = null,
+                loadSize = 5,
+                placeholdersEnabled = false
+            )
+            when (val page = source.load(params)) {
+                is PagingSource.LoadResult.Page -> {
+                    log("首屏 ${page.data.size} 条")
+                    page.data.forEach { log("  $it") }
+                }
+                is PagingSource.LoadResult.Error -> log("Error: ${page.throwable.message}")
+                is PagingSource.LoadResult.Invalid -> log("Invalid")
+            }
         }
     }
 
     private fun testPagedResult() {
         lifecycleScope.launch {
-            log("开始测试 PagedResult 手动分页...")
+            logSection(DemoSection.PAGING, "toPagedResult…")
             val dao = db.userDao()
             val pageSize = 3
-            val page = 0
-            val items = dao.getPage(pageSize, page * pageSize)
-            val total = dao.count()
-            val result = items.toPagedResult(page, pageSize, total)
-            log("分页结果: 第${result.page}页, ${result.items.size}条/页, 总共${result.total}条, hasMore=${result.hasMore}, totalPages=${result.totalPages}")
-            result.items.forEach { log("  $it") }
+            val items = dao.getPage(pageSize, 0)
+            val result = items.toPagedResult(0, pageSize, dao.count())
+            log("page=${result.page}, items=${result.items.size}, total=${result.total}, hasMore=${result.hasMore}")
             refreshStats()
         }
     }
 
     private fun testBackup() {
         lifecycleScope.launch {
-            log("开始测试数据库备份...")
-            try {
-                val backupFile = backupFile()
-                db.backupTo(backupFile)
-                log("备份成功: ${backupFile.absolutePath} (${backupFile.length()} bytes)")
+            logSection(DemoSection.OPS, "backupTo…")
+            runCatching {
+                val file = backupFile()
+                db.backupTo(file)
+                log("→ ${file.absolutePath} (${file.length()} B)")
                 refreshStats()
-            } catch (e: Exception) {
-                log("备份失败: ${e.message}")
-            }
+            }.onFailure { log("失败: ${it.message}") }
         }
     }
 
     private fun testRestore() {
         lifecycleScope.launch {
-            val backupFile = backupFile()
-            if (!backupFile.exists()) {
-                log("恢复失败：未找到备份文件 ${backupFile.absolutePath}")
+            val file = backupFile()
+            if (!file.exists()) {
+                log("无备份: ${file.absolutePath}")
                 return@launch
             }
-            log("开始从备份恢复数据库...")
+            logSection(DemoSection.OPS, "restore…")
             runCatching {
-                db = DbBackupHelper.restore<AppDatabase>(this@MainActivity, dbName, backupFile) {
+                db = DbBackupHelper.restore<AppDatabase>(this@MainActivity, dbName, file) {
                     fallbackToDestructiveMigration()
                 }
             }.onSuccess {
-                log("恢复成功：已重新打开数据库 $dbName")
+                log("恢复成功，请丢弃旧 RoomDatabase 引用")
                 refreshStats()
-            }.onFailure {
-                log("恢复失败：${it.message}")
-            }
+            }.onFailure { log("失败: ${it.message}") }
         }
     }
 
     private fun testGetOrNull() {
-        val existing = DatabaseManager.getOrNull<AppDatabase>(dbName)
-        log("getOrNull('$dbName'): ${existing != null}")
-
-        val notExisting = DatabaseManager.getOrNull<AppDatabase>("nonexistent.db")
-        log("getOrNull('nonexistent.db'): ${notExisting != null}")
-
-        val defaultName = DatabaseManager.getOrCreate<AppDatabase>(this) {
-            fallbackToDestructiveMigration()
-        }
-        log("getOrCreate 默认名称: ${AppDatabase::class.java.simpleName}")
-        DatabaseManager.release(AppDatabase::class.java.simpleName)
+        logSection(DemoSection.OPS, "DatabaseManager…")
+        log("getOrNull('$dbName')=${DatabaseManager.getOrNull<AppDatabase>(dbName) != null}")
+        log("getOrNull('x.db')=${DatabaseManager.getOrNull<AppDatabase>("x.db") != null}")
+        log("isManaged($dbName)=${DatabaseManager.isManaged(dbName)}")
     }
 
     private fun showDbPath() {
         val path = getDatabasePath(dbName).absolutePath
         MaterialAlertDialogBuilder(this)
-            .setTitle("数据库路径")
+            .setTitle(R.string.demo_db_path_title)
             .setMessage(path)
-            .setPositiveButton("复制") { _, _ ->
+            .setPositiveButton(R.string.action_copy_log) { _, _ ->
                 val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                cm.setPrimaryClip(ClipData.newPlainText("aw-db-demo-db-path", path))
-                log("数据库路径已复制")
+                cm.setPrimaryClip(ClipData.newPlainText("db-path", path))
+                log("路径已复制")
             }
-            .setNegativeButton("关闭", null)
+            .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
 
     private fun backupFile(): File {
-        val backupDir = File(getExternalFilesDir(null), "backup")
-        return File(backupDir, "demo_backup.db")
+        val dir = File(getExternalFilesDir(null), "backup")
+        dir.mkdirs()
+        return File(dir, "demo_backup.db")
     }
 }

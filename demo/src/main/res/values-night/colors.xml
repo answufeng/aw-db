@@ -28,6 +28,10 @@
     <!-- Component helpers -->
     <color name="card_bg">#111C33</color>
     <color name="log_bg">#0B162B</color>
+    <color name="log_text">#A5B4FC</color>
+    <color name="api_tag_bg">#1E293B</color>
+    <color name="primary_ripple">#33818CF8</color>
+    <color name="log_content_bg">#0B162B</color>
 
     <!-- Legacy aliases (keep for safety) -->
     <color name="colorPrimary">@color/primary</color>

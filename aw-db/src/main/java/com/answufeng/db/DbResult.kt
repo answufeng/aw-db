@@ -117,6 +117,26 @@ sealed class DbResult<out T> {
     }
 }
 
+/**
+ * 合并多个 [DbResult]：任一 [DbResult.Failure] 优先；任一 [DbResult.Loading] 则返回 Loading；
+ * 全部为 [DbResult.Success] 时对 [transform] 传入各 Success 的 data 列表（顺序与 [results] 一致）。
+ */
+fun <R> combineDbResults(
+    vararg results: DbResult<*>,
+    transform: (List<Any?>) -> R
+): DbResult<R> {
+    for (r in results) {
+        if (r is DbResult.Failure) return DbResult.Failure(r.error)
+    }
+    if (results.any { it is DbResult.Loading }) return DbResult.Loading
+    if (results.isNotEmpty() && results.all { it is DbResult.Success }) {
+        @Suppress("UNCHECKED_CAST")
+        val values = results.map { (it as DbResult.Success<*>).data }
+        return DbResult.Success(transform(values))
+    }
+    return DbResult.Loading
+}
+
 fun <T1, T2, R> combineDbResults(
     result1: DbResult<T1>,
     result2: DbResult<T2>,
@@ -127,57 +147,6 @@ fun <T1, T2, R> combineDbResults(
     result1 is DbResult.Loading || result2 is DbResult.Loading -> DbResult.Loading
     result1 is DbResult.Success && result2 is DbResult.Success -> DbResult.Success(transform(result1.data, result2.data))
     // Defensive: two-arg combine only has Loading/Failure/Success; never reached if states stay consistent.
-    else -> DbResult.Loading
-}
-
-fun <T1, T2, T3, R> combineDbResults(
-    result1: DbResult<T1>,
-    result2: DbResult<T2>,
-    result3: DbResult<T3>,
-    transform: (T1, T2, T3) -> R
-): DbResult<R> = when {
-    result1 is DbResult.Failure -> DbResult.Failure(result1.error)
-    result2 is DbResult.Failure -> DbResult.Failure(result2.error)
-    result3 is DbResult.Failure -> DbResult.Failure(result3.error)
-    result1 is DbResult.Loading || result2 is DbResult.Loading || result3 is DbResult.Loading -> DbResult.Loading
-    result1 is DbResult.Success && result2 is DbResult.Success && result3 is DbResult.Success ->
-        DbResult.Success(transform(result1.data, result2.data, result3.data))
-    else -> DbResult.Loading
-}
-
-fun <T1, T2, T3, T4, R> combineDbResults(
-    result1: DbResult<T1>,
-    result2: DbResult<T2>,
-    result3: DbResult<T3>,
-    result4: DbResult<T4>,
-    transform: (T1, T2, T3, T4) -> R
-): DbResult<R> = when {
-    result1 is DbResult.Failure -> DbResult.Failure(result1.error)
-    result2 is DbResult.Failure -> DbResult.Failure(result2.error)
-    result3 is DbResult.Failure -> DbResult.Failure(result3.error)
-    result4 is DbResult.Failure -> DbResult.Failure(result4.error)
-    result1 is DbResult.Loading || result2 is DbResult.Loading || result3 is DbResult.Loading || result4 is DbResult.Loading -> DbResult.Loading
-    result1 is DbResult.Success && result2 is DbResult.Success && result3 is DbResult.Success && result4 is DbResult.Success ->
-        DbResult.Success(transform(result1.data, result2.data, result3.data, result4.data))
-    else -> DbResult.Loading
-}
-
-fun <T1, T2, T3, T4, T5, R> combineDbResults(
-    result1: DbResult<T1>,
-    result2: DbResult<T2>,
-    result3: DbResult<T3>,
-    result4: DbResult<T4>,
-    result5: DbResult<T5>,
-    transform: (T1, T2, T3, T4, T5) -> R
-): DbResult<R> = when {
-    result1 is DbResult.Failure -> DbResult.Failure(result1.error)
-    result2 is DbResult.Failure -> DbResult.Failure(result2.error)
-    result3 is DbResult.Failure -> DbResult.Failure(result3.error)
-    result4 is DbResult.Failure -> DbResult.Failure(result4.error)
-    result5 is DbResult.Failure -> DbResult.Failure(result5.error)
-    result1 is DbResult.Loading || result2 is DbResult.Loading || result3 is DbResult.Loading || result4 is DbResult.Loading || result5 is DbResult.Loading -> DbResult.Loading
-    result1 is DbResult.Success && result2 is DbResult.Success && result3 is DbResult.Success && result4 is DbResult.Success && result5 is DbResult.Success ->
-        DbResult.Success(transform(result1.data, result2.data, result3.data, result4.data, result5.data))
     else -> DbResult.Loading
 }
 
@@ -231,6 +200,9 @@ fun <T> Flow<T>.asDbResultLiveDataWithLoading(timeoutInMs: Long = 5000L): LiveDa
         .asLiveData(timeoutInMs = timeoutInMs)
 }
 
+/**
+ * 将挂起块包装为 [DbResult]；仅捕获 [Exception]（不含 [Error]）。
+ */
 suspend fun <T> dbResultOf(block: suspend () -> T): DbResult<T> {
     return try {
         DbResult.Success(block())

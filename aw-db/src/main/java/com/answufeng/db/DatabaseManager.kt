@@ -85,20 +85,6 @@ object DatabaseManager {
     }
 
     /**
-     * 获取或创建数据库实例，使用类名作为数据库名。
-     *
-     * 适用于只有一个数据库的简单场景，省去手动指定名称的步骤。
-     *
-     * @see getOrCreate 关于 [block] 与类型约束的说明同样适用
-     */
-    inline fun <reified T : RoomDatabase> getOrCreate(
-        context: Context,
-        noinline block: DatabaseConfig.() -> Unit = {}
-    ): T {
-        return getOrCreate(context, T::class.java.simpleName, block)
-    }
-
-    /**
      * 释放数据库引用。
      *
      * 引用计数递减，归零时自动关闭数据库并移除实例。

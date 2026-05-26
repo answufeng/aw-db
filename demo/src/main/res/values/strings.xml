@@ -1,13 +1,114 @@
 <resources>
     <string name="app_name">aw-db Demo</string>
     <string name="title_main">aw-db Demo</string>
-    <string name="demo_playbook_title">演示清单</string>
-    <string name="demo_playbook_message">按钮与能力索引见 demo/DEMO_MATRIX.md。\n\n覆盖：CRUD、DbResult、事务与 batchExecute、Flow、DebugHelper、分页模型、备份/恢复、DatabaseManager 路径。\n\n生产环境请务必配置正式迁移路径，避免 fallbackToDestructiveMigration。</string>
+    <string name="subtitle_main">按能力分区手测</string>
+    <string name="stats_placeholder">demo.db · 用户 — · Flow 关</string>
+    <string name="stats_format">%1$s · 用户 %2$s · %3$s</string>
+    <string name="flow_on">Flow 开</string>
+    <string name="flow_off">Flow 关</string>
+    <string name="backup_ready">有备份</string>
 
+    <string name="tab_crud_desc">继承 BaseDao 的增删改查与冲突策略</string>
+    <string name="tab_result_desc">dbResultOf 与 Flow 三态观察</string>
+    <string name="tab_transaction_desc">safeTransaction 与 batchExecute</string>
+    <string name="tab_paging_desc">Paging3 与 PagedResult 手动分页</string>
+    <string name="tab_ops_desc">调试、备份恢复与 DatabaseManager</string>
+    <string name="demo_playbook_title">演示说明</string>
+    <string name="demo_playbook_message">顶部 Tab 对应 aw-db 能力分组；每项卡片标明调用的 API。\n\n索引见 demo/DEMO_MATRIX.md。生产环境请配置正式 Migration，勿使用 destructive 回退。</string>
+
+    <string name="tab_crud">BaseDao</string>
+    <string name="tab_result">DbResult</string>
+    <string name="tab_transaction">事务</string>
+    <string name="tab_paging">分页</string>
+    <string name="tab_ops">运维</string>
+
+    <string name="section_logs">运行日志</string>
+    <string name="label_status">运行状态</string>
+    <string name="chip_db_placeholder">库: demo.db</string>
+    <string name="chip_db_format">库: %1$s</string>
+    <string name="chip_users_placeholder">用户: —</string>
+    <string name="chip_users_format">用户: %1$d</string>
+    <string name="chip_flow_off">Flow: 关</string>
+    <string name="chip_flow_on">Flow: 开</string>
+
+    <string name="action_run">运行</string>
+    <string name="action_clear_log">清空</string>
+    <string name="action_copy_log">复制</string>
+    <string name="action_share_log">分享</string>
+    <string name="action_refresh">刷新</string>
+
+    <string name="hint_logs">点击上方 Tab 中的「运行」开始测试…</string>
+
+    <!-- Demo action titles -->
+    <string name="demo_insert_title">插入单条</string>
+    <string name="demo_insert_sub">随机姓名与 tags，验证 BaseDao.insert</string>
+    <string name="demo_batch_insert_title">批量插入</string>
+    <string name="demo_batch_insert_sub">insertAll，单事务写入 5 条</string>
+    <string name="demo_query_all_title">查询全部</string>
+    <string name="demo_query_all_sub">自定义 @Query suspend 列表</string>
+    <string name="demo_query_id_title">按 ID 查询</string>
+    <string name="demo_query_id_sub">弹窗输入主键</string>
+    <string name="demo_upsert_title">Upsert</string>
+    <string name="demo_upsert_sub">冲突时更新 id=1</string>
+    <string name="demo_ignore_title">InsertOrIgnore</string>
+    <string name="demo_ignore_sub">重复主键返回 -1</string>
+    <string name="demo_update_title">更新单条</string>
+    <string name="demo_update_sub">update id=1</string>
+    <string name="demo_delete_title">删除单条</string>
+    <string name="demo_delete_sub">delete id=1</string>
+    <string name="demo_count_title">统计行数</string>
+    <string name="demo_count_sub">COUNT 查询</string>
+    <string name="demo_delete_all_title">清空表</string>
+    <string name="demo_delete_all_sub">DELETE FROM User</string>
+
+    <string name="demo_db_result_title">dbResultOf</string>
+    <string name="demo_db_result_sub">Success / Failure 与 getOrElse</string>
+    <string name="demo_flow_title">Flow 观察</string>
+    <string name="demo_flow_sub">asDbResultWithLoading，再次点击停止</string>
+
+    <string name="demo_tx_title">safeTransaction</string>
+    <string name="demo_tx_sub">两笔 insert + 查询，返回 Result</string>
+    <string name="demo_batch_exec_title">batchExecute SKIP</string>
+    <string name="demo_batch_exec_sub">逐条事务，统计成功/失败</string>
+
+    <string name="demo_paging_title">PagingSource 首屏</string>
+    <string name="demo_paging_sub">Room Paging3 工厂 asPagingFlow</string>
+    <string name="demo_paged_title">PagedResult 手动分页</string>
+    <string name="demo_paged_sub">LIMIT/OFFSET + toPagedResult</string>
+
+    <string name="demo_debug_title">DbDebugHelper</string>
+    <string name="demo_debug_sub">表列表、行数、PRAGMA schema</string>
+    <string name="demo_backup_title">备份数据库</string>
+    <string name="demo_backup_sub">backupTo 到外部目录</string>
+    <string name="demo_restore_title">从备份恢复</string>
+    <string name="demo_restore_sub">restore + WAL 清理</string>
+    <string name="demo_get_or_null_title">DatabaseManager</string>
+    <string name="demo_get_or_null_sub">getOrNull、isManaged</string>
+    <string name="demo_db_path_title">数据库路径</string>
+    <string name="demo_db_path_sub">查看并复制文件路径</string>
+
+    <!-- API tags -->
+    <string name="api_base_dao_insert">BaseDao.insert</string>
+    <string name="api_base_dao_insert_all">BaseDao.insertAll</string>
+    <string name="api_base_dao_upsert">BaseDao.upsert</string>
+    <string name="api_base_dao_ignore">BaseDao.insertOrIgnore</string>
+    <string name="api_base_dao_update">BaseDao.update</string>
+    <string name="api_base_dao_delete">BaseDao.delete</string>
+    <string name="api_dao_query">@Query</string>
+    <string name="api_db_result_of">dbResultOf</string>
+    <string name="api_as_db_result_loading">asDbResultWithLoading</string>
+    <string name="api_safe_transaction">safeTransaction</string>
+    <string name="api_batch_execute">batchExecute</string>
+    <string name="api_as_paging_flow">asPagingFlow</string>
+    <string name="api_paged_result">toPagedResult</string>
+    <string name="api_debug_helper">DbDebugHelper</string>
+    <string name="api_backup">backupTo</string>
+    <string name="api_restore">DbBackupHelper.restore</string>
+    <string name="api_database_manager">DatabaseManager</string>
+
+    <!-- Legacy / removed from layout -->
     <string name="section_basic">基础操作</string>
     <string name="section_advanced">高级能力</string>
-    <string name="section_logs">操作日志</string>
-
     <string name="action_insert">插入用户</string>
     <string name="action_batch_insert">批量插入</string>
     <string name="action_query_all">查询所有</string>
@@ -18,23 +119,16 @@
     <string name="action_update">更新单条</string>
     <string name="action_delete">删除单条</string>
     <string name="action_delete_all">删除所有</string>
-
     <string name="action_db_result">DbResult</string>
     <string name="action_transaction">事务操作</string>
     <string name="action_batch_execute">批量执行</string>
     <string name="action_observe_flow">Flow 观察</string>
     <string name="action_debug_helper">调试工具</string>
     <string name="action_paged_result">手动分页</string>
+    <string name="action_paging">Paging3</string>
     <string name="action_backup">备份</string>
     <string name="action_restore">恢复</string>
     <string name="action_get_or_null">getOrNull</string>
-
-    <string name="action_clear_log">清除</string>
-    <string name="action_copy_log">复制</string>
-    <string name="action_share_log">分享</string>
-    <string name="action_refresh">刷新</string>
-
-    <string name="hint_logs">操作日志将显示在这里…\n点击上方按钮开始测试数据库功能</string>
     <string name="label_db_name">数据库</string>
     <string name="label_user_count">用户数</string>
     <string name="label_flow">Flow</string>

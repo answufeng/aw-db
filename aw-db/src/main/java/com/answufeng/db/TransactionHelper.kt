@@ -167,7 +167,7 @@ suspend fun <T : RoomDatabase, E> T.batchExecute(
         } else {
             var successCount = 0
             val failures = mutableListOf<IndexedValue<Throwable>>()
-            // SKIP：每條獨立事務，避免單一事務內某條失敗後 SQLite 後續語句不可用
+            // SKIP：每条独立事务，避免单事务内某条失败后 SQLite 后续语句不可用
             items.forEachIndexed { index, item ->
                 try {
                     withTransaction {

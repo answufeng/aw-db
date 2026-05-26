@@ -64,14 +64,39 @@ object DbBackupHelper {
         context: Context,
         name: String,
         backupFile: File,
+        requireVersionMatch: Boolean = false,
         noinline block: DatabaseConfig.() -> Unit = {}
     ): T {
+        if (requireVersionMatch) {
+            val meta = readBackupMetadata(backupFile)
+            require(meta != null) {
+                "requireVersionMatch=true but no .meta file found for ${backupFile.name}"
+            }
+        }
         synchronized(DatabaseManager) {
             DatabaseManager.forceClose(name)
             val dbFile = context.getDatabasePath(name)
+            deleteDatabaseFiles(dbFile)
             copyFile(backupFile, dbFile)
-            return DatabaseManager.getOrCreate(context, name, block)
+            val db = DatabaseManager.getOrCreate<T>(context, name, block)
+            if (requireVersionMatch) {
+                val meta = readBackupMetadata(backupFile)!!
+                val actual = db.openHelper.readableDatabase.version
+                check(actual == meta.version) {
+                    "Restored DB version $actual does not match backup metadata version ${meta.version}"
+                }
+            }
+            return db
         }
+    }
+
+    /** 删除主库文件及 WAL/SHM 附属文件，避免还原后读到旧 WAL 状态。 */
+    @PublishedApi
+    internal fun deleteDatabaseFiles(dbFile: File) {
+        dbFile.delete()
+        File("${dbFile.path}-wal").delete()
+        File("${dbFile.path}-shm").delete()
+        File("${dbFile.path}-journal").delete()
     }
 
     fun checkpoint(db: RoomDatabase) {

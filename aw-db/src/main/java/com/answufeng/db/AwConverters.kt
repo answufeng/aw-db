@@ -228,7 +228,7 @@ object AwConverters {
  * 因此需要为每个 Enum 类型创建一个具体的子类：
  *
  * ```kotlin
- * class StatusConverter : EnumConverter<Status>(Status::class.java)
+ * class StatusConverter : EnumConverter<Status>(Status::class.java, strict = true)
  *
  * @TypeConverters(AwConverters::class, StatusConverter::class)
  * abstract class AppDatabase : RoomDatabase()
@@ -236,8 +236,12 @@ object AwConverters {
  *
  * @param T Enum 类型
  * @param enumClass Enum 的 [Class] 对象
+ * @param strict 为 `true` 时，库中无匹配枚举名将抛 [IllegalArgumentException]；默认 `false` 仅打日志并返回 null
  */
-abstract class EnumConverter<T : Enum<T>>(private val enumClass: Class<T>) {
+abstract class EnumConverter<T : Enum<T>>(
+    private val enumClass: Class<T>,
+    private val strict: Boolean = false
+) {
 
     @TypeConverter
     fun fromEnum(value: T?): String? = value?.name
@@ -251,9 +255,14 @@ abstract class EnumConverter<T : Enum<T>>(private val enumClass: Class<T>) {
         if (value.isNullOrBlank()) return null
         val found = enumClass.enumConstants?.find { it.name == value }
         if (found == null) {
+            val msg =
+                "Unknown enum value for ${enumClass.simpleName} in DB column: $value"
+            if (strict) {
+                throw IllegalArgumentException(msg)
+            }
             Log.w(
                 "AwConverters",
-                "Unknown enum value for ${enumClass.simpleName} in DB column: $value (Room will see null; avoid non-null entity fields without migration)"
+                "$msg (Room will see null; avoid non-null entity fields without migration)"
             )
         }
         return found

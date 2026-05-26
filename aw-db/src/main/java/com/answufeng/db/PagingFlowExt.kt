@@ -4,9 +4,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.PagingSource
-import androidx.paging.map
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 
 /**
  * 将 Room [PagingSource] 工厂转换为 [Flow]<[PagingData]>，集成 AndroidX Paging 3。
@@ -40,49 +38,4 @@ fun <T : Any> (() -> PagingSource<Int, T>).asPagingFlow(
         ),
         pagingSourceFactory = { this() }
     ).flow
-}
-
-/**
- * 将 Room [PagingSource] 工厂转换为 [Flow]<[PagingData]<[DbResult]<T>>>，
- * 每个分页项都包装为 [DbResult.Success]。
- *
- * @param T 数据类型
- * @param pageSize 每页大小，默认 20
- * @param enablePlaceholders 是否启用占位符，默认 true
- * @param initialLoadSize 初始加载大小，默认为 pageSize 的 3 倍
- * @return 包装了 DbResult 的分页数据 Flow
- */
-fun <T : Any> (() -> PagingSource<Int, T>).asDbResultPagingFlow(
-    pageSize: Int = 20,
-    enablePlaceholders: Boolean = true,
-    initialLoadSize: Int = pageSize * 3
-): Flow<PagingData<DbResult<T>>> {
-    return asPagingFlow(pageSize, enablePlaceholders, initialLoadSize)
-        .map { pagingData -> pagingData.map { DbResult.Success(it) } }
-}
-
-/**
- * 转换 [DbResult] 分页数据中的成功数据。
- *
- * 当上游由 [asDbResultPagingFlow] 产生时，每项均为 [DbResult.Success]；[transform] 在 Success 上被调用，等价于
- * 在分页项上映射领域模型。若将来扩展为可携带 [DbResult.Failure] 的流，[map] 对 Failure/Loading 的语义
- * 与 [DbResult.map] 一致。
- *
- * ```kotlin
- * val mappedFlow = dbResultPagingFlow.mapResult { user ->
- *     UserUiModel(user.name, user.age)
- * }
- * ```
- *
- * @param T 原始数据类型
- * @param R 转换后的数据类型
- * @param transform 将原始类型 T 转换为目标类型 R 的函数，仅对 Success 状态调用
- * @return 转换后的分页数据 Flow
- */
-fun <T : Any, R : Any> Flow<PagingData<DbResult<T>>>.mapResult(
-    transform: (T) -> R
-): Flow<PagingData<DbResult<R>>> {
-    return this.map { pagingData ->
-        pagingData.map { result -> result.map(transform) }
-    }
 }

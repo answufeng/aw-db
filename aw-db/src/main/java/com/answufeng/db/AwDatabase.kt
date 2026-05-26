@@ -103,6 +103,7 @@ class DatabaseConfig {
     private var transactionExecutor: Executor? = null
     private var multiInstanceInvalidation: Boolean = false
     private var queryCallback: RoomDatabase.QueryCallback? = null
+    private var queryCallbackExecutor: Executor? = null
 
     /** 添加数据库迁移。 */
     fun addMigrations(vararg migration: Migration) {
@@ -175,8 +176,14 @@ class DatabaseConfig {
         multiInstanceInvalidation = true
     }
 
-    fun setQueryCallback(callback: RoomDatabase.QueryCallback) {
+    /**
+     * 注册 Room 查询回调（如 [SqlQueryLogger]）。
+     *
+     * @param executor 回调执行线程；默认每次 [AwDatabase.build] 创建单线程池。宿主可传入共享 Executor 以避免重复建池。
+     */
+    fun setQueryCallback(callback: RoomDatabase.QueryCallback, executor: Executor? = null) {
         queryCallback = callback
+        queryCallbackExecutor = executor
     }
 
     @PublishedApi
@@ -213,17 +220,10 @@ class DatabaseConfig {
         if (multiInstanceInvalidation) {
             builder.enableMultiInstanceInvalidation()
         }
-        queryCallback?.let {
-            builder.setQueryCallback(it, java.util.concurrent.Executors.newSingleThreadExecutor())
+        queryCallback?.let { callback ->
+            val executor = queryCallbackExecutor
+                ?: java.util.concurrent.Executors.newSingleThreadExecutor()
+            builder.setQueryCallback(callback, executor)
         }
     }
 }
-
-inline fun <reified T : RoomDatabase> Context.buildDatabase(
-    name: String,
-    block: DatabaseConfig.() -> Unit = {}
-): T = AwDatabase.build(this, name, block)
-
-inline fun <reified T : RoomDatabase> Context.buildInMemoryDatabase(
-    block: DatabaseConfig.() -> Unit = {}
-): T = AwDatabase.buildInMemory(this, block)

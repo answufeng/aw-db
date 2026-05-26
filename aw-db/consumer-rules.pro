@@ -48,6 +48,7 @@
 -keep class com.answufeng.db.DatabaseConfig { *; }
 -keep class com.answufeng.db.BaseDao { *; }
 -keep class com.answufeng.db.DbDebugHelper { *; }
+-keep class com.answufeng.db.SqlQueryLogger { *; }
 
 # Kotlin 元数据
 -keepattributes Signature, *Annotation*, KotlinDebugMetadata
